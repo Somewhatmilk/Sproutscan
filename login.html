@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriScan Secure Login</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #2c3e50; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        
+        .login-container { background: white; width: 800px; height: 500px; border-radius: 15px; display: flex; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        
+        /* Left Side: Branding */
+        .brand-side { width: 40%; background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; padding: 40px; display: flex; flex-direction: column; justify-content: center; }
+        .brand-side h1 { font-size: 32px; margin-bottom: 10px; }
+        .brand-side p { opacity: 0.8; line-height: 1.6; }
+        
+        /* Right Side: Profiles */
+        .form-side { width: 60%; padding: 40px; display: flex; flex-direction: column; justify-content: center; }
+        
+        .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        
+        .profile-card { border: 2px solid #eee; border-radius: 10px; padding: 15px; cursor: pointer; transition: 0.2s; text-align: center; }
+        .profile-card:hover { border-color: #27ae60; background: #f9fdfa; transform: translateY(-2px); }
+        .profile-card.selected { border-color: #27ae60; background: #e8f5e9; box-shadow: 0 0 10px rgba(39, 174, 96, 0.2); }
+        
+        .role-icon { font-size: 24px; margin-bottom: 10px; color: #555; }
+        .role-name { font-weight: bold; color: #333; }
+        .role-desc { font-size: 11px; color: #888; margin-top: 5px; }
+
+        input { width: 100%; padding: 12px; margin-top: 15px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; margin-top: 15px; background: #27ae60; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        button:hover { background: #219150; }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="brand-side">
+            <i class="fas fa-leaf fa-3x" style="margin-bottom: 20px;"></i>
+            <h1>AgriScan AI</h1>
+            <p>Enterprise Agricultural Intelligence System.</p>
+            <p style="font-size: 12px; margin-top: 20px;">v2.4.0 Stable Build</p>
+        </div>
+
+        <div class="form-side">
+            <h2 style="color: #333;">Select Identity</h2>
+            
+            <div class="profile-grid">
+                <!-- Admin Profile -->
+                <div class="profile-card" onclick="selectProfile('admin', this)">
+                    <i class="fas fa-user-shield role-icon" style="color: #c0392b;"></i>
+                    <div class="role-name">System Admin</div>
+                    <div class="role-desc">Hardware & Settings</div>
+                </div>
+
+                <!-- Expert Profile -->
+                <div class="profile-card" onclick="selectProfile('jane', this)">
+                    <i class="fas fa-microscope role-icon" style="color: #2980b9;"></i>
+                    <div class="role-name">Jane Doe</div>
+                    <div class="role-desc">Agronomist Analysis</div>
+                </div>
+
+                <!-- Farmer Profile -->
+                <div class="profile-card" onclick="selectProfile('john', this)">
+                    <i class="fas fa-tractor role-icon" style="color: #f39c12;"></i>
+                    <div class="role-name">Farmer John</div>
+                    <div class="role-desc">Field Operator</div>
+                </div>
+            </div>
+
+            <div id="passwordSection" style="display:none; animation: fadeIn 0.5s;">
+                <input type="password" id="password" placeholder="Enter Password (123)">
+                <button onclick="handleLogin()">Access Dashboard</button>
+                <p id="errorMsg" style="color: red; font-size: 13px; text-align: center; margin-top: 10px;"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedUser = '';
+
+        function selectProfile(user, element) {
+            // UI Selection Logic
+            document.querySelectorAll('.profile-card').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            
+            selectedUser = user;
+            document.getElementById('passwordSection').style.display = 'block';
+            document.getElementById('password').value = ''; // Clear previous
+            document.getElementById('password').focus();
+        }
+
+        async function handleLogin() {
+            const pwd = document.getElementById('password').value;
+            
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: selectedUser, password: pwd})
+            });
+            const data = await res.json();
+
+            if(data.success) {
+          
+                localStorage.setItem('agriUserRole', data.role);
+                localStorage.setItem('agriUserName', data.name);
+                window.location.href = data.redirect;
+            } else {
+                document.getElementById('errorMsg').innerText = "Incorrect Password. Try '123'.";
+            }
+        }
+    </script>
+</body>
+</html>
