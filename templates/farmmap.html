@@ -1,5 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+<<<<<<< HEAD
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AgriScan AI - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/farmmap.css') }}" />
+</head>
+
+<body>
+    {% include 'navbar.html' %}
+
+    <div class="container" style="padding-top: 20px;">
+        <div class="welcome">
+            <h1>Welcome back, {{ g.user.name }}</h1>
+            <p>Manage your farms and monitor crop health in real-time.</p>
+=======
 
 <head>
     <meta charset="UTF-8" />
@@ -54,17 +72,39 @@
         <div class="welcome">
             <h1>Welcome back, Genevieve</h1>
             <p>Manage your farms and monitor crop health in real-time</p>
+>>>>>>> 2a35f2f903cbec2bbe9b61039896c7cd18a1793d
         </div>
 
         <div class="search-container">
             <input type="text" class="search-box" placeholder="Search your farms by name or serial number...">
+<<<<<<< HEAD
+            <i class="fas fa-search search-icon" style="position:absolute; right: 15px; top: 12px; color: #1a3d2e;"></i>
+=======
             <svg class="search-icon" fill="none" stroke="#1a3d2e" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
+>>>>>>> 2a35f2f903cbec2bbe9b61039896c7cd18a1793d
         </div>
 
         <div class="cards-grid">
             <div class="card">
+<<<<<<< HEAD
+                <!-- Using placeholder images or static images if available -->
+                <div style="height: 200px; background: #ddd; display: flex; align-items: center; justify-content: center; color: #555;">
+                    <i class="fas fa-plus-circle fa-3x"></i>
+                </div>
+                <div class="card-overlay">
+                    <h2 class="card-title">Start Fresh</h2>
+                    <!-- Note: In a real app, this might go to update_plantation for a new ID -->
+                    <button class="btn btn-primary" onclick="alert('Feature coming soon: Create New Farm')">Add a New Farm</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div style="height: 200px; background: #27ae60; display: flex; align-items: center; justify-content: center; color: white;">
+                    <i class="fas fa-tractor fa-3x"></i>
+                </div>
+=======
                 <img src= "static/images/farm1.jpg" alt="Young plants growing" class="card-image">
                 <div class="card-overlay">
                     <h2 class="card-title">Start Fresh</h2>
@@ -75,16 +115,25 @@
 
             <div class="card">
                 <img src= "static/images/farm2.jpg" alt="Agricultural field rows" class="card-image">
+>>>>>>> 2a35f2f903cbec2bbe9b61039896c7cd18a1793d
                 <div class="card-overlay">
                     <h2 class="card-title">Your Farms</h2>
                     <a href="{{ url_for('view_farms') }}">
                         <button class="btn btn-secondary">View My Farms</button>
                     </a>
                 </div>
+<<<<<<< HEAD
+            </div>
+        </div>
+        <a href="#" class="btn btn-primary" style="text-decoration: none;" onclick="alert('Module under maintenance. Please contact Admin.'); return false;">Add a New Farm</a>
+    </div>
+</body>
+=======
                 <div class="photo-credit">Photo By: Tommy Zhang</div>
             </div>
         </div>
     </div>
 </body>
 
+>>>>>>> 2a35f2f903cbec2bbe9b61039896c7cd18a1793d
 </html>

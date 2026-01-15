@@ -1,0 +1,233 @@
+/* PAGE BASE */
+body {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background: #283728;
+    min-height: 100vh;
+    color: #fffbf4;
+}
+
+/* PAGE WIDTH */
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 3rem;
+}
+
+/* HEADER CONTAINER */
+.page-header {
+    max-width: 1400px;
+    margin: 0 auto 3rem auto;
+    padding: 3rem;
+    border-radius: 20px;
+    background-image: 
+        linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
+        url("/static/images/farm3.jpg");
+
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* HEADER TEXT */
+.page-header h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem;
+    color: #fffbf4;
+}
+
+.page-header p {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.75);
+    /* translucent white */
+    margin: 0;
+}
+
+.restore-btn{
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.8rem 1.2rem;
+    border-radius: 999px;
+    background: rgba(255,251,244,0.9);
+    color: #1a3d2e;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .restore-btn:hover{
+    background: rgba(255,251,244,1);
+    transform: translateY(-2px);
+  }
+  
+
+/* BACK LINK */
+.back-link {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    color: #fffbf4;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.back-link:hover {
+    color: #d4a574;
+}
+
+/* TABLE */
+table {
+    width: 100%;
+    table-layout: fixed;
+    background: rgba(255, 251, 244, 0.05);
+    border-radius: 12px;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+th {
+    color: #322826;
+    background: rgba(255, 251, 244, 0.94);
+    padding: 1.25rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+/* Serial Number */
+th:nth-child(1),
+td:nth-child(1) {
+    width: 15%;
+    text-align: left;
+}
+
+th:nth-child(2),
+td:nth-child(2) {
+    width: 20%;
+    text-align: left;
+}
+
+th:nth-child(3),
+td:nth-child(3) {
+    width: 15%;
+    text-align: left;
+}
+
+td:nth-child(4) {
+    display: flex;
+    gap: 1.4rem; 
+}
+
+
+td {
+    padding: 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+tr:hover {
+    background: rgba(255, 251, 244, 0.20);
+}
+
+/* BUTTONS */
+button {
+    padding: 0.7rem 3.28rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.restore-btn{
+    border-radius: 12px;
+    background: #d4a574;
+    color: #1a3d2e;
+}
+
+.restore-btn:hover {
+    background: #e0b585;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(212, 165, 116, 0.4);
+}
+
+.view-btn {
+    background: #7d8b5a;
+    color: #fffbf4;
+}
+
+.view-btn:hover {
+    background: #c2d58b;
+    transform: translateY(-2px);
+}
+
+.update-btn {
+    background: #8d7254;
+    color: #fffbf4;
+}
+
+.update-btn:hover {
+    background: #e0b585;
+    transform: translateY(-2px);
+}
+
+.delete-btn {
+    background: #903741;
+    color: #fffbf4;
+}
+
+.delete-btn:hover {
+    background: #db4c5d;
+    transform: translateY(-2px);
+}
+
+.search-container {
+    margin-top: 1rem;
+    margin-bottom: 3rem;
+    position: relative;
+    max-width: 1276px;
+}
+
+.search-box {
+    width: 100%;
+    padding: 1.25rem 4rem 1.25rem 1.75rem;
+    background: #e1ddd4;
+    border: 2px solid transparent;
+    border-radius: 16px;
+    font-size: 1rem;
+    font-family: 'Inter', sans-serif;
+    color: #4b3224;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.search-box:focus {
+    outline: none;
+    border-color: #d4a574;
+    background: #e1ddd4;
+    box-shadow: 0 6px 30px rgba(212, 165, 116, 0.2);
+}
+
+.search-box::placeholder {
+    color: #4b3224;
+}
+
+.search-icon {
+    position: absolute;
+    right: -4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    pointer-events: none;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}

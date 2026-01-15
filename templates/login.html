@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - AgriScan AI</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #2c3e50; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        
+        .container { background: white; width: 850px; height: 500px; display: flex; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); overflow: hidden; }
+        
+        /* Left Brand Side */
+        .brand-side { width: 40%; background: linear-gradient(135deg, #27ae60, #2ecc71); padding: 40px; color: white; display: flex; flex-direction: column; justify-content: center; position: relative; }
+        .brand-side h1 { font-size: 36px; margin-bottom: 10px; }
+        .brand-side p { font-size: 16px; opacity: 0.9; line-height: 1.5; }
+        .circles { position: absolute; bottom: -50px; left: -50px; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%; }
+        
+        /* Right Form Side */
+        .form-side { width: 60%; padding: 40px; display: flex; flex-direction: column; justify-content: center; }
+        
+        .user-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .user-card { border: 2px solid #f0f0f0; border-radius: 12px; padding: 15px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .user-card:hover { transform: translateY(-3px); border-color: #27ae60; box-shadow: 0 5px 15px rgba(39, 174, 96, 0.1); }
+        .user-card.active { background: #e8f5e9; border-color: #27ae60; }
+        
+        .avatar { width: 40px; height: 40px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
+        .u-info div:first-child { font-weight: bold; font-size: 14px; color: #333; }
+        .u-info div:last-child { font-size: 12px; color: #777; text-transform: uppercase; margin-top: 2px; }
+
+        /* Login Form */
+        .login-form { margin-top: 30px; display: none; animation: fadeIn 0.3s; }
+        .input-group { margin-bottom: 15px; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; transition: 0.2s; }
+        input:focus { border-color: #27ae60; outline: none; }
+        button { width: 100%; padding: 12px; background: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; }
+        button:hover { background: #219150; }
+        
+        .flash { background: #fee; color: #c0392b; padding: 10px; border-radius: 5px; font-size: 13px; margin-bottom: 10px; text-align: center; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="brand-side">
+            <i class="fas fa-seedling fa-3x" style="margin-bottom: 20px;"></i>
+            <h1>AgriScan AI</h1>
+            <p>Advanced agricultural monitoring and pest detection system.</p>
+            <div class="circles"></div>
+        </div>
+
+        <div class="form-side">
+            <h2 style="margin: 0; color: #2c3e50;">Welcome Back</h2>
+            <p style="color: #95a5a6; margin-top: 5px;">Select your profile to continue</p>
+            
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="flash"><i class="fas fa-exclamation-circle"></i> {{ messages[0] }}</div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="user-grid">
+                {% for user in users %}
+                <div class="user-card" onclick="selectProfile('{{user.username}}', this)">
+                    <div class="avatar" style="--avatar-bg: background: {{user.avatar_color}}">{{ user.name[0] }}</div>
+                    <div class="u-info">
+                        <div>{{ user.name }}</div>
+                        <div>{{ user.role }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <form method="POST" class="login-form" id="loginForm">
+                <input type="hidden" name="username" id="usernameInput">
+                <div class="input-group">
+                    <input type="password" name="password" placeholder="Enter Password" required>
+                </div>
+                <button type="submit">Access Dashboard <i class="fas fa-arrow-right"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function selectProfile(username, el) {
+            // Highlight selected
+            document.querySelectorAll('.user-card').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            
+            // Show form
+            document.getElementById('usernameInput').value = username;
+            const form = document.getElementById('loginForm');
+            form.style.display = 'block';
+            
+            // Auto focus password
+            form.querySelector('input[type="password"]').focus();
+        }
+    </script>
+</body>
+</html>
