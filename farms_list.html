@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Farms - AgriScan AI</title>
+
+    <!-- Navbar styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+
+    <!-- Page styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/farms_list.css') }}">
+</head>
+
+<body>
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div id="flashContainer" style="position: fixed; top: 20px; right: 20px; z-index: 1000; max-width: 400px;">
+                    {% for category, message in messages %}
+                    <div class="flash-message" style="background: {% if category == 'success' %}#a3b083{% else %}#b04552{% endif %}; color: whitesmoke; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 0.75rem; animation: slideIn 0.3s ease-out;">
+                        <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                            {% if category == 'success' %}
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            {% else %}
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                            {% endif %}
+                        </svg>
+                        <span>{{ message }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+    <script>
+        // Auto-dismiss flash messages after 5 seconds
+        setTimeout(function () {
+            const container = document.getElementById('flashContainer');
+            if (container) {
+                const messages = container.querySelectorAll('.flash-message');
+                setTimeout(() => container.remove(), 300);
+            }
+        }, 4000);
+    </script>
+
+    <div class="container">
+
+        <!-- HEADER CONTAINER -->
+        <div class="page-header">
+            <a href="{{ url_for('home') }}" class="back-link">← Back to Home</a>
+            <h1>My Farms</h1>
+            <p>Organize your agricultural farms</p>
+
+            <a href="{{ url_for('deleted_farms') }}" class="restore-btn">
+                Recover Deleted Farms
+            </a>
+              
+        </div>
+
+        <div class="search-container">
+            <input type="text" id="farmSearch" class="search-box" placeholder="Search your farms by name or serial number...">
+            <svg class="search-icon" fill="none" stroke="#1a3d2e" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+        </div>
+        
+        <p id="noResults" style="display:none; margin-top:1rem;">&nbsp;No farms found.</p>
+
+        <!-- TABLE -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Serial Number</th>
+                    <th>Name</th>
+                    <th>Date Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for plantation in plantations %}
+                <tr>
+                    <td>{{ plantation.number }}</td>
+                    <td>{{ plantation.name }}</td>
+                    <td>{{ plantation.date_created }}</td>
+                    <td>
+                        <a href="{{ url_for('view_plantation', plantation_id=plantation.id) }}">
+                            <button class="view-btn">VIEW</button>
+                        </a>
+
+                        <a href="{{ url_for('update_plantation', plantation_id=plantation.id) }}">
+                            <button class="update-btn">UPDATE</button>
+                        </a>
+
+                        <form method="POST" action="{{ url_for('delete_plantation', plantation_id=plantation.id) }}"
+                            style="display:inline;">
+                            <button class="delete-btn" type="submit"
+                                onclick="return confirm('Delete {{ plantation.name }}?')">
+                                DELETE
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const searchInput = document.getElementById("farmSearch");
+        const rows = document.querySelectorAll("table tbody tr");
+        const noResults = document.getElementById("noResults");
+      
+        function filterFarms() {
+          const q = searchInput.value.trim().toLowerCase();
+          let visibleCount = 0;
+      
+          rows.forEach(row => {
+            const serial = row.querySelector("td:nth-child(1)")?.innerText.trim().toLowerCase() || "";
+            const name   = row.querySelector("td:nth-child(2)")?.innerText.trim().toLowerCase() || "";
+      
+            const match = serial.includes(q) || name.includes(q);
+            row.style.display = match ? "" : "none";
+            if (match) visibleCount++;
+          });
+      
+          noResults.style.display = visibleCount === 0 ? "block" : "none";
+        }
+      
+        searchInput.addEventListener("input", filterFarms);
+      </script>
+      
+</body>
+</html>

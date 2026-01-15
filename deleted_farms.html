@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deleted Farms - AgriScan AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/deleted_farms.css') }}">
+</head>
+
+<body>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div id="flashContainer" style="position: fixed; top: 20px; right: 20px; z-index: 1000; max-width: 400px;">
+        {% for category, message in messages %}
+        <div class="flash-message"
+            style="background: {% if category == 'success' %}#a3b083{% else %}#b04552{% endif %}; color: whitesmoke; padding: 1rem 1.5rem; border-radius: 8px; margin-bottom: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 0.75rem; animation: slideIn 0.3s ease-out;">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                {% if category == 'success' %}
+                <path fill-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                    clip-rule="evenodd" />
+                {% else %}
+                <path fill-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clip-rule="evenodd" />
+                {% endif %}
+            </svg>
+            <span>{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <script>
+        // Auto-dismiss flash messages after 5 seconds
+        setTimeout(function () {
+            const container = document.getElementById('flashContainer');
+            if (container) {
+                const messages = container.querySelectorAll('.flash-message');
+                setTimeout(() => container.remove(), 300);
+            }
+        }, 4000);
+    </script>
+
+    <div class="container">
+
+        <div class="page-header">
+            <a href="{{ url_for('view_farms') }}" class="back-link">← Back to My Farms</a>
+            <h1>Deleted Farms</h1>
+            <p>Recover farms you deleted earlier</p>
+            </a>
+
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Serial Number</th>
+                    <th>Name</th>
+                    <th>Date Created</th>
+                    <th>Date Deleted</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for plantation in plantations %}
+                <tr>
+                    <td>{{ plantation.number }}</td>
+                    <td>{{ plantation.name }}</td>
+                    <td>{{ plantation.date_created }}</td>
+                    <td>{{ plantation.date_deleted or "-" }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('restore_plantation', plantation_id=plantation['id']) }}"
+                            style="display:inline;">
+                            <button class="recover-btn" type="submit">RECOVER</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+
+</html>

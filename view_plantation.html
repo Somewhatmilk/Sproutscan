@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Plantation - AgriScan AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/view_plantation.css') }}">
+</head>
+
+<body>
+    <div class="container">
+
+        <!-- HEADER CONTAINER -->
+        <div class="page-header">
+            <a href="{{ url_for('view_farms') }}" class="back-link">← Back to My Farms</a>
+            <h1>{{ plantation.name }}</h1>
+            <p>Live feed simulation with AI pest alerts</p>
+        </div>
+        
+    </div>
+</body>
+
+</html>
+
