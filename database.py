@@ -27,52 +27,41 @@ class Database:
             )
         ''')
 
-        # --- USERS TABLE (New) ---
+        # --- USERS TABLE (Added Email) ---
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
+                email TEXT,
                 password TEXT NOT NULL,
                 role TEXT NOT NULL,
                 name TEXT NOT NULL,
                 bio TEXT,
-                avatar_color TEXT
+                avatar_color TEXT,
+                mfa_secret TEXT  
             )
         ''')
         
-        # Seed Plantations
-        cursor.execute('SELECT COUNT(*) FROM plantations')
-        if cursor.fetchone()[0] == 0:
-            sample_data = [
-                ('01', 'PLANTATION LETTUCE', '18/12/2025', 0, None),
-                ('02', 'PLANTATION BOKCHOY', '20/12/2025', 0, None)
-            ]
-            cursor.executemany(
-                'INSERT INTO plantations (number, name, date_created, is_deleted, date_deleted) VALUES (?, ?, ?, ?, ?)',
-                sample_data
-            )
-
-        # Seed Users
+        # Seed Users (All passwords are '123')
+        # Note: If you already have a DB, delete the .db file to regenerate this with the email column
         cursor.execute('SELECT COUNT(*) FROM users')
         if cursor.fetchone()[0] == 0:
+            default_pw = generate_password_hash('123')
             users_data = [
-                ('admin', '123', 'admin', 'System Admin', 'Full Hardware Access & User Mgmt', '#c0392b'),
-                ('jane', '123', 'expert', 'Jane Doe', 'Senior Agronomist / Analyst', '#2980b9'),
-                ('john', '123', 'farmer', 'Farmer John', 'Field Operations Specialist', '#27ae60')
+                ('admin', 'admin@agriscan.com', default_pw, 'admin', 'System Admin', 'Full Hardware Access & User Mgmt', '#c0392b'),
+                ('jane', 'jane@agriscan.com', default_pw, 'expert', 'Jane Doe', 'Senior Agronomist / Analyst', '#2980b9'),
+                ('john', 'john@agriscan.com', default_pw, 'farmer', 'Farmer John', 'Field Operations Specialist', '#27ae60')
             ]
             cursor.executemany(
-                'INSERT INTO users (username, password, role, name, bio, avatar_color) VALUES (?, ?, ?, ?, ?, ?)',
+                'INSERT INTO users (username, email, password, role, name, bio, avatar_color) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 users_data
             )
-        users_data = [
-            ('admin', generate_password_hash('123'), 'admin', 'System Admin', 'Full Hardware Access & User Mgmt', '#c0392b'),
-            ('jane', generate_password_hash('123'), 'expert', 'Jane Doe', 'Senior Agronomist / Analyst', '#2980b9'),
-            ('john', generate_password_hash('123'), 'farmer', 'Farmer John', 'Field Operations Specialist', '#27ae60')
-            ]
+            
         conn.commit()
         conn.close()
 
 class Plantation:
+ 
     def __init__(self, id, number, name, date_created, is_deleted=0, date_deleted=None):
         self.id = id
         self.number = number
@@ -108,14 +97,16 @@ class Plantation:
         conn.close()
 
 class User:
-    def __init__(self, id, username, password, role, name, bio, avatar_color):
+    def __init__(self, id, username, password, role, name, bio, avatar_color, email="", mfa_secret=None):
         self.id = id
         self.username = username
+        self.email = email
         self.password = password
         self.role = role
         self.name = name
         self.bio = bio
         self.avatar_color = avatar_color
+        self.mfa_secret = mfa_secret
 
     @staticmethod
     def get_by_username(username):
@@ -134,14 +125,14 @@ class User:
         return [User(**dict(row)) for row in rows]
 
     @staticmethod
-    def create(username, password, role, name, bio, color):
+    def create(username, email, password, role, name, bio, color):
         db = Database()
         conn = db.get_connection()
         hashed_pw = generate_password_hash(password) 
         try:
             conn.execute(
-                'INSERT INTO users (username, password, role, name, bio, avatar_color) VALUES (?, ?, ?, ?, ?, ?)',
-                (username, hashed_pw, role, name, bio, color)
+                'INSERT INTO users (username, email, password, role, name, bio, avatar_color, mfa_secret) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                (username, email, hashed_pw, role, name, bio, color, None)
             )
             conn.commit()
             return True

@@ -1,93 +1,81 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Manage Users</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; }
-        .u-container { max-width: 900px; margin: 40px auto; padding: 20px; }
-        .card { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        h2, h3 { color: #2c3e50; margin-top: 0; }
-        
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
-        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%; box-sizing: border-box; }
-        .btn-add { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 15px; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { text-align: left; padding: 15px; background: #f8f9fa; color: #7f8c8d; font-size: 12px; text-transform: uppercase; }
-        td { padding: 15px; border-bottom: 1px solid #eee; }
-        .role-tag { padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; background: #eee; }
-        .role-admin { background: #fadbd8; color: #c0392b; }
-        .role-expert { background: #d6eaf8; color: #2980b9; }
-        .role-farmer { background: #d5f5e3; color: #27ae60; }
-    </style>
-</head>
-<body>
-    {% include 'navbar.html' %}
 
-    <div class="u-container">
-        <!-- Add User -->
+{% extends "base.html" %}
+{% block title %}Manage Users - AgriScan AI{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="margin-bottom: 2rem;">
+        <h1 style="font-size: 2.5rem;">User Management</h1>
+        <p class="text-muted">Create accounts for Farmers, Experts, and Admins.</p>
+    </div>
+
+    <div class="cards-grid">
+        <!-- Add User Form -->
         <div class="card">
-            <h3><i class="fas fa-user-plus"></i> Add New User</h3>
+            <h3 style="margin-bottom: 15px; color: var(--secondary);"><i class="fas fa-user-plus"></i> Add New User</h3>
             <form method="POST">
-                <div class="form-grid">
-                    <input name="name" placeholder="Full Name" required>
-                    <input name="username" placeholder="Username" required>
-                    <input type="password" name="password" placeholder="Password" required>
-                    <select name="role">
+                <div class="mb-2">
+                    <input name="name" class="input-std" placeholder="Full Name" required>
+                </div>
+                <div class="mb-2">
+                    <input name="username" class="input-std" placeholder="Username" required>
+                </div>
+                <div class="mb-2">
+                    <input type="email" name="email" class="input-std" placeholder="Email Address" required>
+                </div>
+                <div class="mb-2">
+                    <input name="bio" class="input-std" placeholder="Job Title / Bio">
+                </div>
+                <div class="mb-2">
+                    <select name="role" class="input-std">
                         <option value="farmer">Farmer</option>
                         <option value="expert">Expert</option>
                         <option value="admin">Admin</option>
                     </select>
-                    <input name="bio" placeholder="Role Description/Bio" style="grid-column: span 2;">
                 </div>
-                <button type="submit" class="btn-add">Create User</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Create User</button>
             </form>
         </div>
 
-        <!-- List Users -->
-        <div class="card">
-            <h3><i class="fas fa-users"></i> System Users</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>User</th>
-                        <th>Role</th>
-                        <th>Bio</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for u in users %}
-                    <tr>
-                        <td>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <div style="--avatar-bg: {{u.avatar_color}}; width: 30px; height: 30px; border-radius: 50%; background-color: var(--avatar-bg); color: white; display: flex; align-items: center; justify-content: center; font-size: 12px;">{{u.name[0]}}</div>
-                                <div>
-                                    <div style="font-weight: 600;">{{ u.name }}</div>
-                                    <div style="font-size: 12px; color: #999;">@{{ u.username }}</div>
+        <!-- User List -->
+        <div class="card" style="grid-column: span 2;">
+            <h3 style="margin-bottom: 15px; color: var(--secondary);"><i class="fas fa-users"></i> System Users</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr><th>User</th><th>Email</th><th>Role</th><th style="text-align:right;">Action</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div class="user-avatar" style="--avatar-bg: background: {{u.avatar_color}}; width: 30px; height: 30px; font-size: 12px;">{{u.name[0]}}</div>
+                                    <div>
+                                        <b>{{ u.name }}</b><br>
+                                        <span style="font-size: 0.8em; color: #777;">@{{ u.username }}</span>
+                                    </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="role-tag role-{{u.role}}">{{ u.role|upper }}</span>
-                        </td>
-                        <td style="color: #666; font-size: 14px;">{{ u.bio }}</td>
-                        <td>
-                            {% if u.id != g.user.id and u.username != 'admin' %}
-                            <form action="{{ url_for('delete_user', user_id=u.id) }}" method="POST">
-                                <button type="submit" onclick="return confirm('Remove user?')" style="background: none; border: none; color: #c0392b; cursor: pointer;">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </form>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            </td>
+                            <td>{{ u.email }}</td>
+                            <td>
+                                <span class="role-tag role-{{ u.role }}">{{ u.role|upper }}</span>
+                            </td>
+                            <td style="text-align: right;">
+                                {% if u.id != g.user.id and u.username != 'admin' %}
+                                <form action="{{ url_for('delete_user', user_id=u.id) }}" method="POST" style="display: inline;">
+                                    <button class="btn btn-sm btn-danger" onclick="return confirm('Delete this user?');">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

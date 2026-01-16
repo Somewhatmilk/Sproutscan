@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AgriScan AI{% endblock %}</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/main.css') }}">
+</head>
+<body>
+
+    <!-- NAVBAR (Conditional) -->
+    {% if g.user %}
+    <nav class="navbar">
+        <a href="{{ url_for('home') }}" class="nav-brand">
+            <i class="fas fa-leaf"></i> AgriScan AI
+        </a>
+        
+        <div class="nav-links">
+            <a href="{{ url_for('home') }}"><i class="fas fa-th-large"></i> Dashboard</a>
+            <a href="{{ url_for('view_farms') }}"><i class="fas fa-tractor"></i> My Farms</a>
+            {% if g.user.role == 'admin' %}
+            <a href="{{ url_for('manage_users') }}"><i class="fas fa-users"></i> Users</a>
+            {% endif %}
+        </div>
+
+        <!-- User Profile Dropdown -->
+        <div class="user-menu" onclick="document.getElementById('profileDrop').classList.toggle('show')">
+            <div class="user-avatar" style="--avatar-bg: background: {{ g.user.avatar_color }}">{{ g.user.name[0] }}</div>
+            <div style="line-height: 1.2; text-align: right; display: none; margin-left: 8px;">
+                <div style="font-weight: bold; font-size: 0.9rem;">{{ g.user.name }}</div>
+            </div>
+            <i class="fas fa-chevron-down" style="font-size: 12px; opacity: 0.7; margin-left: 5px;"></i>
+
+            <div class="dropdown-content" id="profileDrop">
+                <div class="drop-item" style="cursor: default; background: #eee; font-weight: bold; font-size: 0.8rem;">
+                    SWITCH IDENTITY
+                </div>
+                {% for u in g.all_users %}
+                    {% if u.id != g.user.id %}
+                    <div class="drop-item" onclick="initiateSwitch('{{u.username}}', '{{u.name}}')">
+                        <div class="user-avatar" style="width: 25px; height: 25px; font-size: 10px; --avatar-bg: background: {{u.avatar_color}}">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>{{ u.name }} <span style="font-size: 0.7em; color: #888;">({{ u.role|upper }})</span></div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+                <div style="border-top: 1px solid #ddd;"></div>
+                <a href="{{ url_for('logout') }}" class="drop-item" style="color: var(--danger);">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- FLASH MESSAGES SYSTEM -->
+    <div class="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash-msg" style="--avatar-bg: background: {% if category=='error' %}var(--danger){% else %}var(--success){% endif %}">
+                <i class="fas {% if category=='error' %}fa-exclamation-circle{% else %}fa-check-circle{% endif %}"></i>
+                {{ message }}
+            </div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- MAIN CONTENT INJECTION -->
+    {% block content %}{% endblock %}
+
+    <!-- ROLE SWITCH MODAL -->
+    <div id="roleModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3>Switch to <span id="targetName" style="color: var(--primary);">User</span></h3>
+            <p class="text-muted" style="margin-bottom: 15px;">Enter password to access this profile.</p>
+            <input type="hidden" id="hiddenTargetUser">
+            <input type="password" id="switchPassword" class="input-std" placeholder="Password">
+            <div style="display: flex; gap: 10px;">
+                <button onclick="submitSwitch()" class="btn btn-primary" style="flex: 1;">Access</button>
+                <button onclick="document.getElementById('roleModal').style.display='none'" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Global Click to close dropdowns
+        window.onclick = function(e) {
+            if (!e.target.closest('.user-menu')) {
+                const drop = document.getElementById('profileDrop');
+                if (drop && drop.classList.contains('show')) drop.classList.remove('show');
+            }
+        }
+        // Auto dismiss flash
+        setTimeout(() => { 
+            const flash = document.querySelector('.flash-container');
+            if(flash) flash.innerHTML = ''; 
+        }, 4000);
+
+        // Switch Logic
+        function initiateSwitch(username, name) {
+            document.getElementById('hiddenTargetUser').value = username;
+            document.getElementById('targetName').innerText = name;
+            document.getElementById('roleModal').style.display = 'flex';
+            document.getElementById('switchPassword').value = ''; 
+            document.getElementById('switchPassword').focus();
+        }
+
+        async function submitSwitch() {
+            const targetUser = document.getElementById('hiddenTargetUser').value;
+            const pwd = document.getElementById('switchPassword').value;
+            try {
+                const res = await fetch('/api/switch_role', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username: targetUser, password: pwd})
+                });
+                const data = await res.json();
+                if(data.success) location.reload();
+                else alert("Invalid Password");
+            } catch(e) { console.error(e); }
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

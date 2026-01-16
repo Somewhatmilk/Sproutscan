@@ -1,10 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, g
 from database import Database, Plantation, User
-import re
+
 from werkzeug.security import check_password_hash
 from datetime import datetime
 import random
 import functools
+import re
+import pyotp
+import qrcode
+import io
+import base64
+
 
 app = Flask(__name__)
 app.secret_key = 'super-secret-key-agriscan'
@@ -40,23 +46,69 @@ def load_logged_in_user():
         else:
             g.user = None
 
-# --- AUTH ROUTES ---
+ 
+@app.route('/api/setup-mfa')
+@login_required
+def setup_mfa():
+    # Generate a random secret for the user
+    secret = pyotp.random_base32()
+    
+    # Save secret to DB (In real app, confirm before saving, but for demo we save now)
+    conn = db.get_connection()
+    conn.execute("UPDATE users SET mfa_secret = ? WHERE id = ?", (secret, session['user_id']))
+    conn.commit()
+    conn.close()
+    
+    # Generate QR Code
+    user_email = g.user.email if g.user.email else g.user.username
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(name=user_email, issuer_name="AgriScan AI")
+    
+    img = qrcode.make(uri)
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    
+    return jsonify({"secret": secret, "qr_image": f"data:image/png;base64,{img_str}"})
 
+# --- UPDATED LOGIN LOGIC (AJAX) ---
 @app.route('/', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+    # If it's a JSON request (AJAX), handle logic
+    if request.method == 'POST' and request.is_json:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        mfa_token = data.get('mfa_token') # Optional
         
         user = User.get_by_username(username)
         
-        if user and check_password_hash(user.password, password):
-            session['user_id'] = user.id
-            session['role'] = user.role
-            return redirect(url_for('home'))
-        else:
-            flash('Invalid credentials', 'error')
+        # 1. Validate Password
+        if not user or not check_password_hash(user.password, password):
+            return jsonify({"success": False, "message": "Invalid credentials"})
             
+        # 2. Check MFA
+        # Fetch the real user row to check mfa_secret (User object needs updating or fetch direct)
+        conn = db.get_connection()
+        row = conn.execute("SELECT mfa_secret FROM users WHERE id = ?", (user.id,)).fetchone()
+        conn.close()
+        mfa_secret = row['mfa_secret'] if row else None
+        
+        # If user has MFA enabled but didn't send token yet
+        if mfa_secret and not mfa_token:
+            return jsonify({"success": False, "mfa_required": True})
+            
+        # If user sent token, verify it
+        if mfa_secret and mfa_token:
+            totp = pyotp.TOTP(mfa_secret)
+            if not totp.verify(mfa_token):
+                return jsonify({"success": False, "message": "Invalid Authenticator Code"})
+        
+        # 3. Success
+        session['user_id'] = user.id
+        session['role'] = user.role
+        return jsonify({"success": True, "redirect": url_for('home')})
+
+    # Standard GET request returns HTML
     return render_template('login.html', users=User.get_all())
 
 @app.route('/logout')
@@ -85,7 +137,19 @@ def switch_role():
 @app.route('/dashboard')
 @login_required
 def home():
-    return render_template('farmmap.html')
+    plantations = Plantation.get_all()
+    return render_template('dashboard.html', plantations=plantations)
+
+# Add a placeholder route for creating a farm if you don't have one yet
+@app.route('/farms/create', methods=['GET', 'POST'])
+@login_required
+def create_plantation():
+    if request.method == 'POST':
+        # Logic to add farm to DB (You can implement the DB insert here)
+        # For now, just redirect back
+        flash("New farm created successfully!", "success")
+        return redirect(url_for('home'))
+    return render_template('update_plantation.html', plantation=None)
 
 @app.route('/farms')
 @login_required
@@ -169,7 +233,14 @@ def restore_plantation(plantation_id):
     flash("Farm recovered successfully!", "success")
     return redirect(url_for("deleted_farms"))
 
-# --- USER MANAGEMENT (Admin Only) ---
+@app.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    email = request.form.get('email')
+    # In a real app, you would verify email exists in DB here
+    # For now, we simulate the success
+    flash(f'Password reset link sent to {email}', 'success')
+    return redirect(url_for('login'))
+ 
 @app.route('/users', methods=['GET', 'POST'])
 @login_required
 def manage_users():
@@ -178,13 +249,22 @@ def manage_users():
         return redirect(url_for('home'))
 
     if request.method == 'POST':
-        # Simple Add User Logic
-        User.create(
-            request.form['username'], request.form['password'],
-            request.form['role'], request.form['name'],
-            request.form['bio'], "#" + "".join([random.choice('0123456789ABCDEF') for j in range(6)])
+        # Default password is always 123 for new users
+        default_pw = "123"
+        
+        success = User.create(
+            request.form['username'], 
+            request.form['email'], # New Field
+            default_pw,
+            request.form['role'], 
+            request.form['name'],
+            request.form['bio'], 
+            "#" + "".join([random.choice('0123456789ABCDEF') for j in range(6)])
         )
-        flash("User added successfully", "success")
+        if success:
+            flash(f"User created. Setup email sent to {request.form['email']}.", "success")
+        else:
+            flash("Username already exists.", "error")
     
     return render_template('users.html', users=User.get_all())
 

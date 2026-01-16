@@ -1,69 +1,54 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Farms - AgriScan AI</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles/farms_list.css') }}">
-</head>
+{% extends "base.html" %}
+{% block title %}My Farms - AgriScan AI{% endblock %}
 
-<body>
-    {% include 'navbar.html' %}
-
-    <!-- Flash messages container logic preserved from your code -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div id="flashContainer" style="position: fixed; top: 80px; right: 20px; z-index: 1000; max-width: 400px;">
-            {% for category, message in messages %}
-            <div style="--avatar-bg: background: {% if category == 'success' %}#27ae60{% else %}#c0392b{% endif %}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-info-circle"></i> <span>{{ message }}</span>
-            </div>
-            {% endfor %}
+{% block content %}
+<div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <div>
+            <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem;">My Farms</h1>
+            <p style="color: #ccc;">Manage your agricultural assets</p>
         </div>
-        {% endif %}
-    {% endwith %}
-
-    <div class="container" style="margin-top: 30px;">
-        <div class="page-header">
-            <a href="{{ url_for('home') }}" class="back-link">← Back to Dashboard</a>
-            <h1>My Farms Registry</h1>
-            <p>Access and manage your agricultural assets</p>
-            <a href="{{ url_for('deleted_farms') }}" class="restore-btn" style="float: right;">
+        <div>
+            <!-- Link to deleted farms page -->
+            <a href="{{ url_for('deleted_farms') }}" class="btn btn-outline">
                 <i class="fas fa-trash-restore"></i> Recover Deleted
             </a>
         </div>
+    </div>
 
-        <input type="text" id="farmSearch" class="search-box" placeholder="Filter farms..." style="width: 100%; padding: 15px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px;">
+    <!-- Search -->
+    <input type="text" id="farmSearch" class="search-box" placeholder="Search by Serial Number or Name...">
 
+    <!-- Table -->
+    <div class="table-container">
         <table>
             <thead>
                 <tr>
-                    <th>Serial</th>
-                    <th>Name</th>
-                    <th>Created</th>
-                    <th>Actions</th>
+                    <th>SERIAL</th>
+                    <th>NAME</th>
+                    <th>CREATED</th>
+                    <th style="text-align: right;">ACTIONS</th>
                 </tr>
             </thead>
             <tbody>
                 {% for plantation in plantations %}
                 <tr>
-                    <td><b>{{ plantation.number }}</b></td>
+                    <td style="font-family: monospace; font-size: 1.1em; color: var(--primary);">{{ plantation.number }}</td>
                     <td>{{ plantation.name }}</td>
                     <td>{{ plantation.date_created }}</td>
-                    <td>
-                        <a href="{{ url_for('view_plantation', plantation_id=plantation.id) }}">
-                            <button class="view-btn">MONITOR</button>
+                    <td style="text-align: right;">
+                        <a href="{{ url_for('view_plantation', plantation_id=plantation.id) }}" class="btn btn-sm btn-view">
+                            <i class="fas fa-eye"></i> Monitor
                         </a>
                         
-                        <!-- Only Admin/Experts can update/delete -->
                         {% if g.user.role != 'farmer' %}
-                        <a href="{{ url_for('update_plantation', plantation_id=plantation.id) }}">
-                            <button class="update-btn">EDIT</button>
+                        <a href="{{ url_for('update_plantation', plantation_id=plantation.id) }}" class="btn btn-sm btn-edit">
+                            <i class="fas fa-edit"></i>
                         </a>
-
                         <form method="POST" action="{{ url_for('delete_plantation', plantation_id=plantation.id) }}" style="display:inline;">
-                            <button class="delete-btn" type="submit" onclick="return confirm('Archive this farm?')">DELETE</button>
+                            <button class="btn btn-sm btn-danger" type="submit" onclick="return confirm('Archive this farm?')">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </form>
                         {% endif %}
                     </td>
@@ -72,22 +57,15 @@
             </tbody>
         </table>
     </div>
+</div>
 
-    <script>
-        // Simple search filter
-        document.getElementById("farmSearch").addEventListener("input", function() {
-            const val = this.value.toLowerCase();
-            document.querySelectorAll("tbody tr").forEach(row => {
-                const text = row.innerText.toLowerCase();
-                row.style.display = text.includes(val) ? "" : "none";
-            });
+<script>
+    // Simple Client-side Search
+    document.getElementById("farmSearch").addEventListener("input", function() {
+        const val = this.value.toLowerCase();
+        document.querySelectorAll("tbody tr").forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none";
         });
-
-        // Flash auto-dismiss
-        setTimeout(() => {
-            const el = document.getElementById('flashContainer');
-            if(el) el.remove();
-        }, 4000);
-    </script>
-</body>
-</html>
+    });
+</script>
+{% endblock %}
