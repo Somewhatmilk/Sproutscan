@@ -6,25 +6,37 @@
     <div style="margin-bottom: 2rem;">
         <a href="{{ url_for('view_farms') }}" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Back to Active Farms</a>
         <h1 style="margin-top: 1rem;">Recycle Bin</h1>
+        <p class="text-muted">Restore accidentally deleted assets</p>
     </div>
 
+    <!-- Table Container matches Registry Style -->
     <div class="table-container">
         <table>
             <thead>
                 <tr>
-                    <th>SERIAL</th>
-                    <th>NAME</th>
-                    <th>DELETED ON</th>
-                    <th>ACTION</th>
+                    <th>Serial #</th>
+                    <th>Farm Name</th>
+                    <th>Deleted On</th>
+                    <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for plantation in plantations %}
                 <tr>
-                    <td style="opacity: 0.7;">{{ plantation.number }}</td>
-                    <td style="opacity: 0.7;">{{ plantation.name }}</td>
+                    <!-- Applied Registry Styling: Monospace font & Primary Color -->
+                    <td style="font-family: monospace; font-size: 1.1em; color: var(--primary);">
+                        {{ plantation.number }}
+                    </td>
+                    
+                    <!-- Removed opacity to match Registry clarity -->
+                    <td style="font-weight: 500;">
+                        {{ plantation.name }}
+                    </td>
+                    
                     <td>{{ plantation.date_deleted or "-" }}</td>
-                    <td>
+                    
+                    <!-- Right Aligned Actions -->
+                    <td style="text-align: right;">
                         <form method="POST" action="{{ url_for('restore_plantation', plantation_id=plantation['id']) }}">
                             <button class="btn btn-sm btn-success" type="submit">
                                 <i class="fas fa-undo"></i> RESTORE
@@ -34,7 +46,10 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="4" class="text-center" style="padding: 30px; color: #aaa;">No deleted farms found.</td>
+                    <td colspan="4" class="text-center" style="padding: 30px; color: #aaa;">
+                        <i class="fas fa-trash" style="margin-bottom: 10px; font-size: 1.5rem; display: block;"></i>
+                        No deleted farms found.
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

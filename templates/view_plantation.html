@@ -1,33 +1,131 @@
- 
 {% extends "base.html" %}
 {% block title %}Monitor: {{ plantation.name }}{% endblock %}
 
 {% block content %}
-<div class="dashboard-layout" style="height: calc(100vh - 80px);">
+<div class="dashboard-layout" style="height: calc(100vh - 80px); gap: 0;">
     
-    <!-- 1. LIVE FEED SECTION -->
-    <div class="main-feed" style="position: relative; flex: 1; background: #000;">
-        <!-- Simulated Live Video -->
-        <video id="liveVideo" autoplay muted playsinline loop style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;"></video>
+    <!-- LEFT COLUMN: LIVE FEED & PEST LOGS -->
+    <div style="flex: 2; display: flex; flex-direction: column;">
         
-        <!-- HUD Overlay -->
-        <div class="hud" id="hudBox" style="position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 20px; border-left: 4px solid #27ae60; color: white; backdrop-filter: blur(5px);">
-            <div style="font-size: 0.75rem; letter-spacing: 1px; opacity: 0.8;">LIVE ANALYSIS • {{ plantation.number }}</div>
-            <div id="statusText" style="font-size: 1.8rem; font-weight: bold; margin: 5px 0;">SCANNING...</div>
-            <div id="confText" style="font-size: 0.9rem;">Connecting to AI Core...</div>
+        <!-- 1. LIVE VIDEO (AgriScan Feature) -->
+        <div class="main-feed" style="position: relative; flex: 1; background: #000; overflow: hidden;">
+            <video id="liveVideo" autoplay muted playsinline loop 
+                    poster="{{ url_for('static', filename='images/farm5.jpg') }}"
+                    style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;">
+            </video>
+            <!-- HUD Overlay -->
+            <div class="hud" id="hudBox" style="position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.7); padding: 20px; border-left: 4px solid #27ae60; color: white; backdrop-filter: blur(5px);">
+                <div style="font-size: 0.75rem; letter-spacing: 1px; opacity: 0.8;">LIVE ANALYSIS • {{ plantation.number }}</div>
+                <div id="statusText" style="font-size: 1.8rem; font-weight: bold; margin: 5px 0;">SCANNING...</div>
+                <div id="confText" style="font-size: 0.9rem;">Connecting to AI Core...</div>
+            </div>
+        </div>
+
+        <!-- 2. PEST LOGS (New Feature Integrated from SproutScan) -->
+        <!-- Styled to match AgriScan (Clean, light background, tech fonts) -->
+        <div style="height: 350px; background: #fdfbf7; padding: 20px; overflow-y: auto; border-top: 4px solid var(--secondary);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: var(--secondary); margin: 0;"><i class="fas fa-clipboard-list"></i> Pest Incident History</h3>
+                <button onclick="document.getElementById('logModal').style.display='flex'" class="btn btn-sm btn-danger">
+                    <i class="fas fa-plus"></i> Report Incident
+                </button>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <thead style="background: rgba(0,0,0,0.05);">
+                    <tr>
+                        <th style="padding: 10px; text-align: left; color: #555;">Time</th>
+                        <th style="padding: 10px; text-align: left; color: #555;">Issue Details</th>
+                        <th style="padding: 10px; text-align: left; color: #555;">Reported By</th>
+                        <th style="padding: 10px; text-align: left; color: #555;">Status</th>
+                        <th style="padding: 10px; text-align: right; color: #555;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 10px; color: #666;">{{ log.entry_time }}</td>
+                        <td style="padding: 10px;">
+                            <span style="font-weight: bold; color: var(--text-dark);">{{ log.issue }}</span>
+                            <!-- Severity Badge -->
+                            {% if log.severity == 'High' %}
+                                <span style="background: #903741; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7em;">HIGH</span>
+                            {% endif %}
+                            <div style="font-size: 0.8em; color: #777; margin-top: 2px;">{{ log.remarks }}</div>
+                        </td>
+                        <td style="padding: 10px; color: #666;">{{ log.reporter_name }}</td>
+                        <td style="padding: 10px;">
+                            <!-- Status Badges adapted to Tech Theme -->
+                            {% if log.resolved %}
+                                <span style="background: #d5f5e3; color: #27ae60; padding: 3px 8px; border-radius: 10px; font-size: 0.8em; font-weight: bold;">RESOLVED</span>
+                            {% else %}
+                                <span style="background: #fadbd8; color: #c0392b; padding: 3px 8px; border-radius: 10px; font-size: 0.8em; font-weight: bold;">ACTIVE</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 10px; text-align: right;">
+                            <form action="{{ url_for('toggle_log_status', log_id=log.id) }}" method="POST">
+                                <button class="btn btn-sm btn-outline" style="color: var(--secondary); border-color: #ddd;">
+                                    {% if log.resolved %}Reopen{% else %}Mark Resolved{% endif %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" style="padding: 30px; text-align: center; color: #999;">No incidents recorded for this farm.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <!-- 2. CONTROL PANEL (Right Side) -->
-    <div class="control-panel" style="width: 350px; background: white; padding: 25px; border-left: 1px solid #ddd; overflow-y: auto;">
-        <a href="{{ url_for('home') }}" class="btn btn-outline" style="color: #7f8c8d; margin-bottom: 20px; display: inline-block;">
+    <!-- RIGHT COLUMN: CONTROL PANEL -->
+    <div class="control-panel" style="width: 320px; background: white; padding: 25px; border-left: 1px solid #ddd; overflow-y: auto;">
+        <a href="{{ url_for('home') }}" class="btn btn-outline" style="color: #7f8c8d; margin-bottom: 20px; display: block; text-align: center;">
             <i class="fas fa-arrow-left"></i> Back to Hub
         </a>
 
-        <h1 style="font-size: 1.8rem; margin-bottom: 5px;">{{ plantation.name }}</h1>
-        <p class="text-muted" style="margin-bottom: 30px;">Established: {{ plantation.date_created }}</p>
+        <h1 style="font-size: 1.6rem; margin-bottom: 5px;">{{ plantation.name }}</h1>
+        <p class="text-muted" style="margin-bottom: 30px;">Serial: {{ plantation.number }}</p>
 
-        <!-- Role: Farmer -->
+        <h4 style="margin-top: 30px; border-bottom: 2px solid #ddd; padding-bottom: 10px;">Incident History</h4>
+
+        <div class="log-grid">
+            {% for log in logs %}
+       
+            <div class="log-card {% if log.resolved %}resolved{% endif %}">
+                
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:start;">
+                        <strong style="font-size: 1rem;">{{ log.issue }}</strong>
+                        <span style="font-size: 0.75rem; color: #888;">{{ log.entry_time }}</span>
+                    </div>
+                    <p style="font-size: 0.9rem; color: #555; margin: 8px 0;">{{ log.remarks }}</p>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                    <span style="font-size: 0.75rem; background: #f0f0f0; padding: 2px 8px; border-radius: 4px; font-weight:600;">
+                        {{ log.category }}
+                    </span>
+                    
+                    <form action="{{ url_for('toggle_log_status', log_id=log.id) }}" method="POST" style="margin:0;">
+                        <button class="btn btn-sm btn-outline" style="color: var(--secondary); border: 1px solid #ddd; font-size: 0.75rem;">
+                            {% if log.resolved %}Reopen{% else %}Resolve{% endif %}
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+            {% else %}
+            <p class="text-muted" style="grid-column: 1/-1;">No incidents recorded.</p>
+            {% endfor %}
+        </div>
+
+        <!-- Add Button -->
+        <button onclick="document.getElementById('logModal').style.display='flex'" class="btn btn-danger btn-sm" style="width: 100%; margin-top: 10px;">
+            <i class="fas fa-plus"></i> Report Incident
+        </button>
+
+        <!-- Role: Farmer/Admin Actions -->
         {% if g.user.role == 'farmer' or g.user.role == 'admin' %}
         <div class="mb-2">
             <h4 style="color: var(--secondary); margin-bottom: 10px;">Field Actions</h4>
@@ -40,7 +138,7 @@
         </div>
         {% endif %}
 
-        <!-- Role: Expert -->
+        <!-- Role: Expert/Admin Actions -->
         {% if g.user.role == 'expert' or g.user.role == 'admin' %}
         <div class="mt-2" style="border-top: 1px solid #eee; padding-top: 20px;">
             <h4 style="color: var(--info); margin-bottom: 10px;">Spectral Analysis</h4>
@@ -52,6 +150,59 @@
             </button>
         </div>
         {% endif %}
+    </div>
+</div>
+
+<!-- ADD LOG MODAL -->
+<div id="logModal" class="modal-overlay">
+    <div class="modal-box" style="text-align: left; width: 450px;">
+        <h3 style="margin-bottom: 15px; text-align: center;">New Incident Report</h3>
+        
+        <!-- Note: action now points to a route that handles the form -->
+        <form action="{{ url_for('add_pest_log', plantation_id=plantation.id) }}" method="POST">
+            
+            <!-- Issue Field -->
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.8rem; font-weight: bold;">Issue Title</label>
+                <!-- We bind the name to the WTForm field name -->
+                <input type="text" name="issue" class="input-std" placeholder="e.g. Broken Sensor" required>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <!-- Category Field (New from SproutScan) -->
+                <div style="flex: 1;">
+                    <label style="font-size: 0.8rem; font-weight: bold;">Category</label>
+                    <select name="category" class="input-std">
+                        <option value="Pest">Pest Infestation</option>
+                        <option value="Hardware">Hardware Failure</option>
+                        <option value="Network">Network Issue</option>
+                        <option value="Irrigation">Irrigation</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <!-- Severity Field -->
+                <div style="flex: 1;">
+                    <label style="font-size: 0.8rem; font-weight: bold;">Severity</label>
+                    <select name="severity" class="input-std">
+                        <option value="Low">Low</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="High">High</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Remarks Field -->
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 0.8rem; font-weight: bold;">Technical Remarks</label>
+                <textarea name="remarks" class="input-std" rows="3" placeholder="Describe the issue..."></textarea>
+            </div>
+
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-danger" style="flex: 1;">Submit Ticket</button>
+                <button type="button" onclick="document.getElementById('logModal').style.display='none'" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

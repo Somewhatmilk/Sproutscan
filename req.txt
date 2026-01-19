@@ -1,4 +1,8 @@
-fastapi
-uvicorn
+Flask
+WTForms
+pyotp
+qrcode
 python-multipart
 jinja2  
+werkzeug
+pillow

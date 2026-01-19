@@ -4,32 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}AgriScan AI{% endblock %}</title>
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Modular CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/main.css') }}">
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-    <!-- NAVBAR (Conditional) -->
     {% if g.user %}
     <nav class="navbar">
         <a href="{{ url_for('home') }}" class="nav-brand">
             <i class="fas fa-leaf"></i> AgriScan AI
         </a>
-        
         <div class="nav-links">
-            <a href="{{ url_for('home') }}"><i class="fas fa-th-large"></i> Dashboard</a>
-            <a href="{{ url_for('view_farms') }}"><i class="fas fa-tractor"></i> My Farms</a>
+            <a href="{{ url_for('home') }}">Map View</a>
+            <a href="{{ url_for('view_farms') }}">Farm Registry</a>
             {% if g.user.role == 'admin' %}
-            <a href="{{ url_for('manage_users') }}"><i class="fas fa-users"></i> Users</a>
+            <a href="{{ url_for('manage_users') }}">Users</a>
             {% endif %}
         </div>
 
         <!-- User Profile Dropdown -->
         <div class="user-menu" onclick="document.getElementById('profileDrop').classList.toggle('show')">
-            <div class="user-avatar" style="--avatar-bg: background: {{ g.user.avatar_color }}">{{ g.user.name[0] }}</div>
-            <div style="line-height: 1.2; text-align: right; display: none; margin-left: 8px;">
-                <div style="font-weight: bold; font-size: 0.9rem;">{{ g.user.name }}</div>
+            <div style="width: 30px; height: 30px; --avatar-bg: background: {{ g.user.avatar_color }}; border-radius: 50%; display:grid; place-items:center; font-weight:bold; color:#fff;">
+                {{ g.user.name[0] }}
             </div>
+            <span style="margin-left: 10px; font-weight: 500;">{{ g.user.name }}</span>
             <i class="fas fa-chevron-down" style="font-size: 12px; opacity: 0.7; margin-left: 5px;"></i>
 
             <div class="dropdown-content" id="profileDrop">
@@ -55,14 +57,18 @@
     </nav>
     {% endif %}
 
-    <!-- FLASH MESSAGES SYSTEM -->
-    <div class="flash-container">
+    <!-- FLASH MESSAGES SYSTEM (New SVG Toast Version) -->
+    <div class="flash-container" id="flashContainer">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-            <div class="flash-msg" style="--avatar-bg: background: {% if category=='error' %}var(--danger){% else %}var(--success){% endif %}">
-                <i class="fas {% if category=='error' %}fa-exclamation-circle{% else %}fa-check-circle{% endif %}"></i>
-                {{ message }}
+            <div class="flash-msg flash-{{ category }}">
+                {% if category == 'success' %}
+                    <i class="fas fa-check-circle" style="color: var(--success)"></i>
+                {% else %}
+                    <i class="fas fa-exclamation-circle" style="color: var(--danger)"></i>
+                {% endif %}
+                <span>{{ message }}</span>
             </div>
             {% endfor %}
         {% endif %}
@@ -88,20 +94,21 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Global Click to close dropdowns
+        // 1. Auto Dismiss Flash Messages
+        setTimeout(() => {
+            const container = document.getElementById('flashContainer');
+            if(container) container.style.display = 'none';
+        }, 4000);
+
+        // 2. Dropdown Logic
         window.onclick = function(e) {
             if (!e.target.closest('.user-menu')) {
                 const drop = document.getElementById('profileDrop');
                 if (drop && drop.classList.contains('show')) drop.classList.remove('show');
             }
         }
-        // Auto dismiss flash
-        setTimeout(() => { 
-            const flash = document.querySelector('.flash-container');
-            if(flash) flash.innerHTML = ''; 
-        }, 4000);
 
-        // Switch Logic
+        // 3. Role Switching Logic
         function initiateSwitch(username, name) {
             document.getElementById('hiddenTargetUser').value = username;
             document.getElementById('targetName').innerText = name;
