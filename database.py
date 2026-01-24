@@ -1,7 +1,6 @@
 import sqlite3
 from werkzeug.security import generate_password_hash
 from datetime import datetime
-    
 
 class Database:
     def __init__(self, db_name='plantations.db'):
@@ -29,6 +28,14 @@ class Database:
                 date_deleted TEXT
             )
         ''')
+
+
+        try:
+            cursor.execute("ALTER TABLE plantations ADD COLUMN last_updated TEXT")
+            print("MIGRATION SUCCESS: Added 'last_updated' column.")
+        except sqlite3.OperationalError:
+            pass # Column already exists, ignore error
+
 
         # 2. USERS  
         cursor.execute('''
@@ -71,7 +78,6 @@ class Database:
             )
         """)
         
-        # 5. CROP STAGES (Merged from cropstage.py)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS cropstage (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,7 +90,6 @@ class Database:
                 FOREIGN KEY (crop_id) REFERENCES crops(id)
             )
         """)
-
 
         cursor.execute('SELECT COUNT(*) FROM users')
         if cursor.fetchone()[0] == 0:
@@ -104,28 +109,48 @@ class Database:
         conn.close()
 
 class Plantation:
-    def __init__(self, id=None, number=None, name=None, date_created=None, last_updated=None, is_deleted=0, date_deleted=None):
-        self.id = id
-        self.number = number
-        self.name = name
-        self.date_created = date_created or datetime.now().strftime("%d/%m/%Y")
-        self.last_updated = last_updated
-        self.is_deleted = is_deleted
-        self.date_deleted = date_deleted
-    
+    # UPDATED: Use **kwargs to prevent AttributeError if DB schema creates new columns
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id')
+        self.number = kwargs.get('number')
+        self.name = kwargs.get('name')
+        self.date_created = kwargs.get('date_created') or datetime.now().strftime("%d/%m/%Y")
+        self.last_updated = kwargs.get('last_updated')
+        self.is_deleted = kwargs.get('is_deleted', 0)
+        self.date_deleted = kwargs.get('date_deleted')
+        
+        # Virtual Property for status
+        self._status = None 
+
+    @property
+    def status(self):
+        """Dynamic Status based on active High Severity tickets"""
+        if self._status is None and self.id:
+            db = Database()
+            conn = db.get_connection()
+            # Check for unresolved HIGH severity tickets
+            row = conn.execute('''
+                SELECT COUNT(*) FROM pest_logs 
+                WHERE plantation_id = ? AND resolved = 0 AND severity = 'High'
+            ''', (self.id,)).fetchone()
+            conn.close()
+            
+            if row and row[0] > 0:
+                self._status = 'Error'
+            else:
+                self._status = 'Online'
+        return self._status
+
     def save(self):
-        """Modified: Handles Insert OR Update with Timestamp"""
         db = Database()
         conn = db.get_connection()
         if self.id:
-            # Update Logic
             current_time = datetime.now().strftime("%d/%m/%Y %H:%M")
             conn.execute(
                 'UPDATE plantations SET number=?, name=?, date_created=?, last_updated=? WHERE id=?',
                 (self.number, self.name, self.date_created, current_time, self.id)
             )
         else:
-            # Insert Logic
             conn.execute(
                 'INSERT INTO plantations (number, name, date_created) VALUES (?, ?, ?)',
                 (self.number, self.name, self.date_created)
@@ -144,15 +169,6 @@ class Plantation:
         conn.close()
 
     @staticmethod
-    def permanent_delete(plantation_id):
-        """New: From Secondary Version"""
-        db = Database()
-        conn = db.get_connection()
-        conn.execute("DELETE FROM plantations WHERE id = ?", (plantation_id,))
-        conn.commit()
-        conn.close()
-
-    @staticmethod
     def restore(plantation_id):
         db = Database()
         conn = db.get_connection()
@@ -166,17 +182,15 @@ class Plantation:
         conn = db.get_connection()
         
         if include_deleted:
-            # Logic for Deleted Farms Page
             rows = conn.execute("SELECT * FROM plantations WHERE is_deleted = 1 ORDER BY date_deleted DESC").fetchall()
+   
         elif search_query:
-            # Logic for Dashboard Search
             q = f"%{search_query}%"
             rows = conn.execute(
                 "SELECT * FROM plantations WHERE is_deleted = 0 AND (name LIKE ? OR number LIKE ?) ORDER BY id", 
                 (q, q)
             ).fetchall()
         else:
-            # Default Logic (Show all active)
             rows = conn.execute("SELECT * FROM plantations WHERE is_deleted = 0 ORDER BY id").fetchall()
             
         conn.close()
@@ -191,16 +205,17 @@ class Plantation:
         return Plantation(**dict(row)) if row else None
 
 class User:
-    def __init__(self, id, username, password, role, name, bio, avatar_color, email="", mfa_secret=None):
-        self.id = id
-        self.username = username
-        self.email = email
-        self.password = password
-        self.role = role
-        self.name = name
-        self.bio = bio
-        self.avatar_color = avatar_color
-        self.mfa_secret = mfa_secret
+    # UPDATED: Use **kwargs to safely handle 'mfa_secret' existence
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id')
+        self.username = kwargs.get('username')
+        self.email = kwargs.get('email', '')
+        self.password = kwargs.get('password')
+        self.role = kwargs.get('role')
+        self.name = kwargs.get('name')
+        self.bio = kwargs.get('bio')
+        self.avatar_color = kwargs.get('avatar_color')
+        self.mfa_secret = kwargs.get('mfa_secret')
 
     @staticmethod
     def get_by_username(username):
@@ -243,60 +258,27 @@ class User:
         conn.commit()
         conn.close()
 
-class PestLog:
-    def __init__(self, id=None, plantation_id=None, issue=None, severity="Medium", reporter_name=None, entry_time=None, remarks=None, resolved=0):
-        self.id = id
-        self.plantation_id = plantation_id
-        self.issue = issue
-        self.severity = severity
-        self.reporter_name = reporter_name
-        self.entry_time = entry_time or datetime.now().strftime('%Y-%m-%d %H:%M')
-        self.remarks = remarks
-        self.resolved = resolved
-
-    def save(self):
-        db = Database()
-        conn = db.get_connection()
-        if self.id:
-            conn.execute('UPDATE pest_logs SET issue=?, severity=?, resolved=?, remarks=? WHERE id=?', 
-                         (self.issue, self.severity, self.resolved, self.remarks, self.id))
-        else:
-            conn.execute('INSERT INTO pest_logs (plantation_id, issue, severity, reporter_name, entry_time, remarks, resolved) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                         (self.plantation_id, self.issue, self.severity, self.reporter_name, self.entry_time, self.remarks, self.resolved))
-        conn.commit()
-        conn.close()
-
-    @staticmethod
-    def get_by_plantation(plantation_id):
-        db = Database()
-        conn = db.get_connection()
-        rows = conn.execute('SELECT * FROM pest_logs WHERE plantation_id = ? ORDER BY entry_time DESC', (plantation_id,)).fetchall()
-        conn.close()
-        return [IncidentLog(**dict(row)) for row in rows]
-    
- 
-
-class IncidentLog: # Renamed from PestLog to be more generic
-    def __init__(self, id=None, plantation_id=None, issue=None, category="Other", severity="Medium", reporter_name=None, entry_time=None, remarks=None, resolved=0):
-        self.id = id
-        self.plantation_id = plantation_id
-        self.issue = issue
-        self.category = category # Added this field
-        self.severity = severity
-        self.reporter_name = reporter_name
-        self.entry_time = entry_time or datetime.now().strftime('%Y-%m-%d %H:%M')
-        self.remarks = remarks
-        self.resolved = resolved
+class IncidentLog:
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id')
+        self.plantation_id = kwargs.get('plantation_id')
+        self.issue = kwargs.get('issue')
+        self.category = kwargs.get('category', 'Other') 
+        self.severity = kwargs.get('severity')
+        self.reporter_name = kwargs.get('reporter_name')
+        self.entry_time = kwargs.get('entry_time') or datetime.now().strftime('%Y-%m-%d %H:%M')
+        self.remarks = kwargs.get('remarks')
+        self.resolved = kwargs.get('resolved', 0)
 
     def save(self):
         db = Database()
         conn = db.get_connection()
         
-        # Ensure table exists with new column (Quick migration hack for SQLite)
+        # Robust column check
         try:
             conn.execute("ALTER TABLE pest_logs ADD COLUMN category TEXT DEFAULT 'Other'")
         except:
-            pass # Column likely exists
+            pass 
 
         if self.id:
             conn.execute('''
@@ -314,10 +296,8 @@ class IncidentLog: # Renamed from PestLog to be more generic
 
     @staticmethod
     def get_all_active():
-        """New method to get all open tickets for the global maintenance page"""
         db = Database()
         conn = db.get_connection()
-        # JOIN to get farm name
         sql = '''
             SELECT p.*, f.name as farm_name 
             FROM pest_logs p 
@@ -329,13 +309,19 @@ class IncidentLog: # Renamed from PestLog to be more generic
         conn.close()
         return rows 
     
+    @staticmethod
+    def get_by_plantation(plantation_id):
+        db = Database()
+        conn = db.get_connection()
+        rows = conn.execute('SELECT * FROM pest_logs WHERE plantation_id = ? ORDER BY entry_time DESC', (plantation_id,)).fetchall()
+        conn.close()
+        return [IncidentLog(**dict(row)) for row in rows]
 
 class Crop:
     @staticmethod
     def get_all_with_stages():
         db = Database()
         conn = db.get_connection()
-        # SQL Logic merged from cropstage.py
         rows = conn.execute("""
             SELECT
                 c.id,

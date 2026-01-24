@@ -1,80 +1,89 @@
-
 {% extends "base.html" %}
 {% block title %}Manage Users - AgriScan AI{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div style="margin-bottom: 2rem;">
-        <h1 style="font-size: 2.5rem;">User Management</h1>
-        <p class="text-muted">Create accounts for Farmers, Experts, and Admins.</p>
+<div class="registry-container">
+    
+    <div class="page-header">
+        <div>
+            <h1>User Management</h1>
+            <p>Administer access permissions and profiles</p>
+        </div>
+        <!-- User Count / Add Button can go here -->
     </div>
 
-    <div class="cards-grid">
-        <!-- Add User Form -->
-        <div class="card">
-            <h3 style="margin-bottom: 15px; color: var(--secondary);"><i class="fas fa-user-plus"></i> Add New User</h3>
+    <!-- NEW LAYOUT: Split for Add Form & List, or just List -->
+    <div style="display: grid; grid-template-columns: 1fr 3fr; gap: 25px;">
+        
+        <!-- 1. Quick Add User (Compact) -->
+        <div class="card" style="background: white; padding: 20px; border-radius: 16px; height: fit-content;">
+            <h4 style="color: var(--secondary); margin-bottom: 15px;">+ Invite User</h4>
             <form method="POST">
-                <div class="mb-2">
-                    <input name="name" class="input-std" placeholder="Full Name" required>
-                </div>
-                <div class="mb-2">
-                    <input name="username" class="input-std" placeholder="Username" required>
-                </div>
-                <div class="mb-2">
-                    <input type="email" name="email" class="input-std" placeholder="Email Address" required>
-                </div>
-                <div class="mb-2">
-                    <input name="bio" class="input-std" placeholder="Job Title / Bio">
-                </div>
-                <div class="mb-2">
-                    <select name="role" class="input-std">
-                        <option value="farmer">Farmer</option>
-                        <option value="expert">Expert</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Create User</button>
+                <input name="name" class="input-std" placeholder="Full Name" required style="padding: 10px;">
+                <input name="username" class="input-std" placeholder="Username" required style="padding: 10px;">
+                <input type="email" name="email" class="input-std" placeholder="Email" required style="padding: 10px;">
+                <select name="role" class="input-std" style="padding: 10px;">
+                    <option value="farmer">Farmer</option>
+                    <option value="expert">Expert</option>
+                    <option value="admin">Admin</option>
+                </select>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Send Invite</button>
             </form>
         </div>
 
-        <!-- User List -->
-        <div class="card" style="grid-column: span 2;">
-            <h3 style="margin-bottom: 15px; color: var(--secondary);"><i class="fas fa-users"></i> System Users</h3>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr><th>User</th><th>Email</th><th>Role</th><th style="text-align:right;">Action</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for u in users %}
-                        <tr>
-                            <td>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <div class="user-avatar" style="--avatar-bg: background: {{u.avatar_color}}; width: 30px; height: 30px; font-size: 12px;">{{u.name[0]}}</div>
-                                    <div>
-                                        <b>{{ u.name }}</b><br>
-                                        <span style="font-size: 0.8em; color: #777;">@{{ u.username }}</span>
-                                    </div>
+        <!-- 2. User List (Matches Farm Registry Style) -->
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>User Profile</th>
+                        <th>Contact</th>
+                        <th>Role</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="user-avatar" style="--avatar-bg: background: {{u.avatar_color}}; width: 36px; height: 36px; font-size: 14px; color: white;">
+                                    {{u.name[0]}}
                                 </div>
-                            </td>
-                            <td>{{ u.email }}</td>
-                            <td>
-                                <span class="role-tag role-{{ u.role }}">{{ u.role|upper }}</span>
-                            </td>
-                            <td style="text-align: right;">
-                                {% if u.id != g.user.id and u.username != 'admin' %}
-                                <form action="{{ url_for('delete_user', user_id=u.id) }}" method="POST" style="display: inline;">
-                                    <button class="btn btn-sm btn-danger" onclick="return confirm('Delete this user?');">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </form>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                                <div>
+                                    <div style="font-weight: 600; color: #2c3e50;">{{ u.name }}</div>
+                                    <div style="font-size: 0.75rem; color: #94a3b8;">@{{ u.username }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="color: #64748b;">{{ u.email }}</td>
+                        <td>
+                            {% if u.role == 'admin' %}
+                                <span class="meta-tag" style="background: #fee2e2; color: #991b1b;">ADMIN</span>
+                            {% elif u.role == 'expert' %}
+                                <span class="meta-tag" style="background: #e0f2fe; color: #0369a1;">EXPERT</span>
+                            {% else %}
+                                <span class="meta-tag" style="background: #f1f5f9; color: #475569;">FARMER</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <!-- Edit Button (Visual Consistency) -->
+                            <button class="btn-action" style="color: #64748b;" title="Edit Details">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
+
+                            {% if u.id != g.user.id and u.username != 'admin' %}
+                            <form action="{{ url_for('delete_user', user_id=u.id) }}" method="POST" style="display: inline;">
+                                <button class="btn-action btn-delete" onclick="return confirm('Delete this user?');" title="Remove Access">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

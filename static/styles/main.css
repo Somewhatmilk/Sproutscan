@@ -158,6 +158,30 @@ ul { list-style: none; }
     border-left-color: var(--success);
 }
 
+ .farm-card-split {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        display: flex;
+        height: 180px; /* Compact fixed height */
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        transition: 0.3s;
+    }
+    .farm-card-split:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+    
+    .split-img { width: 40%; background-size: cover; background-position: center; }
+    .split-content { width: 60%; padding: 15px; display: flex; flex-direction: column; justify-content: space-between; }
+    
+    .serial-tag { font-family: monospace; font-size: 0.75rem; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #64748b; }
+    
+    .dot-indicator { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot-indicator.green { background: var(--success); box-shadow: 0 0 0 3px #dcfce7; }
+    .dot-indicator.red { background: var(--danger); box-shadow: 0 0 0 3px #fee2e2; }
+
+    .split-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .btn-icon { width: 32px; height: 32px; display: grid; place-items: center; background: #f1f5f9; border-radius: 8px; color: #64748b; transition: 0.2s; }
+    .btn-icon:hover { background: var(--secondary); color: white; }
+
 /* =========================================
    4. TOAST NOTIFICATIONS
    ========================================= */
@@ -239,6 +263,80 @@ ul { list-style: none; }
 .cards-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 25px;
+}
+
+/* =========================================
+   11. HUD & TABS (Monitor Page Update)
+   ========================================= */
+
+/* The Transparent HUD Overlay */
+.hud-container {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 10;
+}
+
+.hud-item {
+    background: rgba(0, 0, 0, 0.6); /* Semi-transparent black */
+    backdrop-filter: blur(8px);     /* Glass morphism */
+    border-left: 3px solid transparent;
+    padding: 10px 15px;
+    border-radius: 0 8px 8px 0;
+    color: white;
+    transition: 0.3s;
+}
+
+.hud-item:hover {
+    background: rgba(0, 0, 0, 0.8);
+    width: 220px; /* Slight expansion on hover */
+}
+
+.hud-label { font-size: 0.7rem; text-transform: uppercase; opacity: 0.8; letter-spacing: 1px; }
+.hud-value { font-size: 1.1rem; font-weight: 700; }
+
+/* Status Colors for HUD Borders */
+.hud-success { border-left-color: #2ecc71; }
+.hud-warning { border-left-color: #f1c40f; }
+.hud-info { border-left-color: #3498db; }
+
+/* Tabbed Sidebar System */
+.tab-header {
+    display: flex;
+    background: #f1f5f9;
+    padding: 5px;
+    border-radius: 8px 8px 0 0;
+    gap: 5px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-weight: 600;
+    color: #64748b;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: 0.2s;
+}
+
+.tab-btn:hover { background: rgba(0,0,0,0.05); }
+.tab-btn.active { background: white; color: var(--secondary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+.tab-content { display: none; height: 100%; flex-direction: column; }
+.tab-content.active { display: flex; }
+
+/* Drone Animation Overlay */
+.drone-overlay {
+    position: absolute; top:0; left:0; width:100%; height:100%;
+    background: rgba(0,0,0,0.5); z-index: 20;
+    display: none; align-items: center; justify-content: center; flex-direction: column; color: white;
 }
 
 /* Photo Card (The Farm) */

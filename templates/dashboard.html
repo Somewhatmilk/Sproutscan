@@ -5,87 +5,106 @@
 {% block content %}
 <div class="container">
     
-    <!-- HEADER SECTION: Cleaned up to use only ONE layout -->
     <div class="dashboard-header">
         <div class="header-text">
             <h1>Command Center</h1>
-            <p>System Online &bull; Overview of active monitoring zones</p>
+            <p>System Online &bull; Active Monitoring</p>
         </div>
 
-        <!-- SEARCH -->
-        <form action="{{ url_for('home') }}" method="GET" class="search-wrapper">
-            <input type="text" name="q" value="{{ search_query or '' }}" class="search-pill" placeholder="Search farms...">
+        <!-- SEARCH: Fixed to work with the JavaScript below -->
+        <div class="search-wrapper">
+            <input type="text" id="liveSearchInput" class="search-pill" placeholder="Filter farms..." autocomplete="off">
             <button class="search-btn"><i class="fas fa-search"></i></button>
-        </form>
+        </div>
     </div>
 
     <!-- GRID SECTION -->
-    <div class="cards-grid">
+    <div class="cards-grid" id="farmGrid">
     
-    
+        <!-- Register Card -->
         <a href="{{ url_for('create_plantation') }}" class="card add-card">
             <div class="add-icon-circle">
                 <i class="fas fa-plus"></i>
             </div>
             <h3>Register New Farm</h3>
-            <p>Connect hardware to a new field</p>
-        </a>
+            <p>Connect hardware</p>
+        </a>  
  
-        <!-- 2. Farm Cards Loop -->
+        <!-- SPLIT CARD DESIGN -->
         {% for farm in plantations %}
-        <div class="photo-card filter-target" data-name="{{ farm.name }} {{ farm.number }}"></div>
-        <div class="photo-card">
-        
-            <img src="{{ url_for('static', filename='images/farm' ~ (loop.index % 5 + 1) ~ '.jpg') }}" 
-            alt="Farm Scenery">
+        <div class="farm-card-split filter-target" data-name="{{ farm.name }} {{ farm.number }}">
             
-            <div class="card-overlay">
-                <div style="display: flex; justify-content: space-between; align-items: start;">
-                    <span class="status-badge">ONLINE</span>
-                    <!-- Last Updated Tag -->
-                    {% if farm.last_updated %}
-                    <span style="background: rgba(0,0,0,0.6); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">
-                        <i class="fas fa-clock"></i> {{ farm.last_updated.split(' ')[1] }}
-                    </span>
+            <!-- Left: Image -->
+            <div class="split-img" style="background-image: url('{{ url_for('static', filename='images/farm' ~ (loop.index % 5 + 1) ~ '.jpg') }}');"></div>
+            
+            <!-- Right: Info -->
+            <div class="split-content">
+                
+                <!-- Top Row: Serial & Status Dot -->
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="serial-tag">{{ farm.number }}</span>
+                    
+                    {% if farm.status == 'Error' %}
+                        <span class="dot-indicator red" title="High Severity Issues"></span>
+                    {% else %}
+                        <span class="dot-indicator green" title="Online"></span>
                     {% endif %}
                 </div>
 
-                <div class="card-content-bottom">
-                    <a href="{{ url_for('view_plantation', plantation_id=farm.id) }}" style="color: white;">
-                        <h2>{{ farm.name }}</h2>
-                    </a>
-                    <p class="serial-no">Serial: {{ farm.number }}</p>
+                <!-- Middle: Name, Last Update, Signal -->
+                <div style="margin-top: 10px;">
+                    <h3 style="margin: 0; font-size: 1.1rem; color: #2c3e50;">{{ farm.name }}</h3>
                     
-                    <div class="card-actions">
-                        <a href="{{ url_for('view_plantation', plantation_id=farm.id) }}" class="btn btn-primary btn-sm">
-                            Monitor
-                        </a>
-                        <a href="{{ url_for('update_plantation', plantation_id=farm.id) }}" class="btn btn-secondary btn-sm">
-                            Edit
-                        </a>
+                    <!-- FIXED: Last Updated integrated here -->
+                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">
+                        {% if farm.last_updated %}
+                            <i class="fas fa-clock"></i> {{ farm.last_updated.split(' ')[1] }}
+                        {% else %}
+                            <i class="fas fa-clock"></i> Just now
+                        {% endif %}
                     </div>
+
+                    <p style="font-size: 0.8rem; color: #7f8c8d; margin-top: 8px;">
+                        {% if farm.status == 'Error' %}
+                            <i class="fas fa-exclamation-circle" style="color: var(--danger)"></i> Action Required
+                        {% else %}
+                            <i class="fas fa-wifi" style="color: var(--success)"></i> Signal Strong
+                        {% endif %}
+                    </p>
+                </div>
+
+                <!-- Bottom: Actions -->
+                <div class="split-actions">
+                    <a href="{{ url_for('view_plantation', plantation_id=farm.id) }}" class="btn btn-primary btn-sm" style="flex: 1;">
+                        Monitor
+                    </a>
+                    <a href="{{ url_for('update_plantation', plantation_id=farm.id) }}" class="btn-icon">
+                        <i class="fas fa-cog"></i>
+                    </a>
                 </div>
             </div>
         </div>
-        {% else %}
-   
-            {% if search_query %}
-            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #7f8c8d;">
-                <h3>No farms found matching "{{ search_query }}"</h3>
-                <a href="{{ url_for('home') }}" class="btn btn-secondary" style="margin-top: 10px;">Clear Search</a>
-            </div>
-            {% endif %}
         {% endfor %}
 
     </div>
 </div>
-{% endblock %}
+
 <script>
-    document.querySelector('.search-pill').addEventListener('keyup', function(e) {
+    // Pure Client-Side Filtering
+    document.getElementById('liveSearchInput').addEventListener('keyup', function(e) {
         const term = e.target.value.toLowerCase();
-        document.querySelectorAll('.filter-target').forEach(card => {
+        // Note: Changed from .filter-target to .farm-card-split.filter-target to be safe
+        const cards = document.querySelectorAll('.filter-target');
+        
+        cards.forEach(card => {
             const name = card.getAttribute('data-name').toLowerCase();
-            card.style.display = name.includes(term) ? '' : 'none';
+            if (name.includes(term)) {
+ 
+                card.style.display = 'flex'; 
+            } else {
+                card.style.display = 'none';
+            }
         });
     });
 </script>
+{% endblock %}
