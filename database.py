@@ -1,8 +1,7 @@
 import sqlite3
 from werkzeug.security import generate_password_hash
 from datetime import datetime
-
-from cropstage import cropstage
+    
 
 class Database:
     def __init__(self, db_name='plantations.db'):
@@ -18,7 +17,7 @@ class Database:
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # --- 1. PLANTATIONS TABLE ---
+        # 1. PLANTATIONS
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS plantations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,7 +30,7 @@ class Database:
             )
         ''')
 
-        # 2. USERS TABLE (Kept from Primary)
+        # 2. USERS  
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,12 +45,13 @@ class Database:
             )
         ''')
 
-        # --- 3. PEST LOGS TABLE (NEW FEATURE) ---
+        # 3. INCIDENT LOGS
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS pest_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 plantation_id INTEGER NOT NULL,
                 issue TEXT NOT NULL,
+                category TEXT DEFAULT 'Other',
                 severity TEXT NOT NULL, 
                 reporter_name TEXT NOT NULL,
                 entry_time TEXT NOT NULL,
@@ -61,44 +61,45 @@ class Database:
             )
         ''')
         
-        # cropstage.py
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS users (
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS crops (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE,
-                name TEXT,
-                role TEXT,
-                avatar_color TEXT
+                crop_name TEXT NOT NULL,
+                category TEXT NOT NULL,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # 5. CROP STAGES (Merged from cropstage.py)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cropstage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                crop_id INTEGER NOT NULL,
+                stage_name TEXT NOT NULL,
+                expected_days INTEGER,
+                ai_confidence INTEGER,
+                status TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (crop_id) REFERENCES crops(id)
             )
         """)
 
-        # Seed Admin if not exists
+
         cursor.execute('SELECT COUNT(*) FROM users')
         if cursor.fetchone()[0] == 0:
             default_pw = generate_password_hash('123')
-            # Seeding basic users
             users_data = [
-                ('admin', 'admin@agriscan.com', default_pw, 'admin', 'System Admin', 'Full Hardware Access & User Mgmt', '#c0392b'),
-                ('jane', 'jane@agriscan.com', default_pw, 'expert', 'Jane Doe', 'Senior Agronomist / Analyst', '#2980b9'),
-                ('john', 'john@agriscan.com', default_pw, 'farmer', 'Farmer John', 'Field Operations Specialist', '#27ae60')
+                ('admin', 'admin@agriscan.com', default_pw, 'admin', 'System Admin', 'Full Access', '#c0392b'),
+                ('jane', 'jane@agriscan.com', default_pw, 'expert', 'Jane Doe', 'Agronomist', '#2980b9'),
+                ('john', 'john@agriscan.com', default_pw, 'farmer', 'Farmer John', 'Field Op', '#27ae60')
             ]
             cursor.executemany(
                 'INSERT INTO users (username, email, password, role, name, bio, avatar_color) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 users_data
             )
-            
-        cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM users")
-        if cur.fetchone()[0] == 0:
-            users_data = [
-                ('admin', 'System Admin', 'admin', '#c0392b'),
-                ('jane', 'Jane Doe', 'expert', '#2980b9'),
-                ('john', 'Farmer John', 'farmer', '#27ae60')
-            ]
-            conn.executemany(
-                "INSERT INTO users (username, name, role, avatar_color) VALUES (?, ?, ?, ?)", 
-                users_data
-            )
+            print("Default users seeded.")
+
         conn.commit()
         conn.close()
 
@@ -271,7 +272,7 @@ class PestLog:
         conn = db.get_connection()
         rows = conn.execute('SELECT * FROM pest_logs WHERE plantation_id = ? ORDER BY entry_time DESC', (plantation_id,)).fetchall()
         conn.close()
-        return [PestLog(**dict(row)) for row in rows]
+        return [IncidentLog(**dict(row)) for row in rows]
     
  
 
@@ -326,4 +327,55 @@ class IncidentLog: # Renamed from PestLog to be more generic
         '''
         rows = conn.execute(sql).fetchall()
         conn.close()
-        return rows # Returns dictionaries
+        return rows 
+    
+
+class Crop:
+    @staticmethod
+    def get_all_with_stages():
+        db = Database()
+        conn = db.get_connection()
+        # SQL Logic merged from cropstage.py
+        rows = conn.execute("""
+            SELECT
+                c.id,
+                c.crop_name,
+                c.category,
+                c.notes,
+                COALESCE(cs.stage_name, '') AS stage_name,
+                COALESCE(cs.expected_days, '') AS expected_days,
+                COALESCE(cs.ai_confidence, '') AS ai_confidence,
+                COALESCE(cs.status, '') AS status
+            FROM crops c
+            LEFT JOIN cropstage cs
+              ON cs.id = (
+                SELECT id
+                FROM cropstage
+                WHERE crop_id = c.id
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+              )
+            ORDER BY c.id DESC
+        """).fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+
+    @staticmethod
+    def create(name, category, notes):
+        db = Database()
+        conn = db.get_connection()
+        conn.execute(
+            "INSERT INTO crops (crop_name, category, notes) VALUES (?, ?, ?)",
+            (name, category, notes)
+        )
+        conn.commit()
+        conn.close()
+    
+    @staticmethod
+    def delete(crop_id):
+        db = Database()
+        conn = db.get_connection()
+        conn.execute("DELETE FROM cropstage WHERE crop_id = ?", (crop_id,))
+        conn.execute("DELETE FROM crops WHERE id = ?", (crop_id,))
+        conn.commit()
+        conn.close()

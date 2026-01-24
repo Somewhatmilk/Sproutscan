@@ -16,10 +16,10 @@
     {% if g.user %}
     <nav class="navbar">
         <a href="{{ url_for('home') }}" class="nav-brand">
-            <i class="fas fa-leaf"></i> AgriScan AI
+            <i class="fas fa-leaf"></i> SproutScan AI
         </a>
         <div class="nav-links">
-            <a href="{{ url_for('home') }}">Map View</a>
+            <a href="{{ url_for('home') }}">Dashboard</a>
             <a href="{{ url_for('view_farms') }}">Farm Registry</a>
             {% if g.user.role == 'admin' %}
             <a href="{{ url_for('manage_users') }}">Users</a>
@@ -35,6 +35,12 @@
             <i class="fas fa-chevron-down" style="font-size: 12px; opacity: 0.7; margin-left: 5px;"></i>
 
             <div class="dropdown-content" id="profileDrop">
+                <a href="{{ url_for('profile') }}" class="drop-item">
+                    <div class="user-avatar" style="width: 25px; height: 25px; font-size: 10px; background: #555;">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <div>Settings & MFA</div>
+                </a>
                 <div class="drop-item" style="cursor: default; background: #eee; font-weight: bold; font-size: 0.8rem;">
                     SWITCH IDENTITY
                 </div>
@@ -131,6 +137,24 @@
                 else alert("Invalid Password");
             } catch(e) { console.error(e); }
         }
+            document.addEventListener('DOMContentLoaded', function() {
+        
+
+ 
+        const mfaInputs = document.querySelectorAll('#mfaInput, input[name="mfa_token"]');
+        mfaInputs.forEach(input => {
+            input.addEventListener('input', function(e) {
+                let v = this.value.replace(/\D/g, ''); // Digits only
+                if (v.length > 6) v = v.slice(0, 6); // Max 6 digits
+
+                if (v.length > 3) {
+                    this.value = `${v.slice(0, 3)} ${v.slice(3)}`;
+                } else {
+                    this.value = v;
+                }
+            });
+        });
+    });
     </script>
     {% block scripts %}{% endblock %}
 </body>

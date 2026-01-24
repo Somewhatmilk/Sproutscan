@@ -1,53 +1,63 @@
 {% extends "base.html" %}
-{% block title %}Deleted Farms{% endblock %}
+{% block title %}Deleted Farms - AgriScan AI{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div style="margin-bottom: 2rem;">
-        <a href="{{ url_for('view_farms') }}" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Back to Active Farms</a>
-        <h1 style="margin-top: 1rem;">Recycle Bin</h1>
-        <p class="text-muted">Restore accidentally deleted assets</p>
+<div class="registry-container">
+    
+    <div class="page-header">
+        <div>
+            <h1>Recycle Bin</h1>
+            <p>Restore accidentally deleted assets</p>
+        </div>
+        <div style="display: flex; gap: 15px;">
+            <a href="{{ url_for('view_farms') }}" class="btn btn-outline" style="background: rgba(255,255,255,0.1);">
+                <i class="fas fa-arrow-left"></i> Back to Registry
+            </a>
+        </div>
     </div>
 
-    <!-- Table Container matches Registry Style -->
-    <div class="table-container">
+    <div class="table-card">
         <table>
             <thead>
                 <tr>
                     <th>Serial #</th>
                     <th>Farm Name</th>
-                    <th>Deleted On</th>
+                    <th>Date Created</th>
+                    <th>Date Deleted</th>
                     <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {% for plantation in plantations %}
+                {% for p in plantations %}
                 <tr>
-                    <!-- Applied Registry Styling: Monospace font & Primary Color -->
-                    <td style="font-family: monospace; font-size: 1.1em; color: var(--primary);">
-                        {{ plantation.number }}
+                    <td style="font-family: monospace; font-weight: 600; color: #7f8c8d; text-decoration: line-through;">
+                        {{ p.number }}
                     </td>
                     
-                    <!-- Removed opacity to match Registry clarity -->
-                    <td style="font-weight: 500;">
-                        {{ plantation.name }}
+                    <td style="opacity: 0.7;">
+                        <div style="font-weight: 600;">{{ p.name }}</div>
                     </td>
                     
-                    <td>{{ plantation.date_deleted or "-" }}</td>
+                    <td style="color: #999;">{{ p.date_created }}</td>
                     
-                    <!-- Right Aligned Actions -->
+                    <td>
+                        <span class="meta-tag deleted">
+                             {{ p.date_deleted or "Unknown" }}
+                        </span>
+                    </td>
+                    
                     <td style="text-align: right;">
-                        <form method="POST" action="{{ url_for('restore_plantation', plantation_id=plantation['id']) }}">
-                            <button class="btn btn-sm btn-success" type="submit">
-                                <i class="fas fa-undo"></i> RESTORE
+                        <form method="POST" action="{{ url_for('restore_plantation', plantation_id=p.id) }}">
+                            <button class="btn-action btn-restore" type="submit">
+                                <i class="fas fa-undo"></i> Restore
                             </button>
                         </form>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="4" class="text-center" style="padding: 30px; color: #aaa;">
-                        <i class="fas fa-trash" style="margin-bottom: 10px; font-size: 1.5rem; display: block;"></i>
+                    <td colspan="5" style="text-align: center; padding: 50px; color: #aaa;">
+                        <i class="fas fa-trash-alt" style="font-size: 2rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
                         No deleted farms found.
                     </td>
                 </tr>

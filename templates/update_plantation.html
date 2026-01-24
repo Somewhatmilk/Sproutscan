@@ -1,34 +1,81 @@
 {% extends "base.html" %}
-{% block title %}Update Farm - AgriScan AI{% endblock %}
+{% block title %}Manage Farm{% endblock %}
 
 {% block content %}
 <div class="container">
-    <a href="{{ url_for('view_farms') }}" class="btn btn-outline" style="margin-bottom: 20px;">
-        <i class="fas fa-arrow-left"></i> Back
-    </a>
+    <div class="form-card" style="max-width: 500px;">
+        <div class="form-header">
+            <h2>{% if plantation %}Edit Farm{% else %}New Asset{% endif %}</h2>
+        </div>
 
-    <div class="form-card">
-        <h2 style="margin-bottom: 10px;">Update {{ plantation.name }}</h2>
-        <p style="margin-bottom: 20px; color: var(--text-muted);">Modify asset details below.</p>
+        <!-- Displays Specific Errors Here -->
+        {% if form.errors %}
+            <div style="background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <strong style="display:block; margin-bottom:5px;">Please correct the following:</strong>
+                <ul style="padding-left: 20px; margin: 0;">
+                    {% for field, errors in form.errors.items() %}
+                        {% for error in errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
         
         <form method="POST">
-            <label>Serial Number</label>
-            <input type="text" name="number" value="{{ form_data.number if form_data else plantation.number }}" class="input-std" required>
-            {% if errors and errors.number %}<p style="color: var(--danger); font-size: 0.8rem;">{{ errors.number[0] }}</p>{% endif %}
-
-            <label>Farm Name</label>
-            <input type="text" name="name" value="{{ form_data.name if form_data else plantation.name }}" class="input-std" required>
-            {% if errors and errors.name %}<p style="color: var(--danger); font-size: 0.8rem;">{{ errors.name[0] }}</p>{% endif %}
-            
-            <label>Date Created (DD/MM/YYYY)</label>
-            <input type="text" name="date_created" value="{{ form_data.date_created if form_data else plantation.date_created }}" class="input-std" required>
-            {% if errors and errors.date_created %}<p style="color: var(--danger); font-size: 0.8rem;">{{ errors.date_created[0] }}</p>{% endif %}
-            
-            <div style="margin-top: 20px; display: flex; gap: 10px;">
-                <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
-                <a href="{{ url_for('view_farms') }}" class="btn btn-secondary" style="flex: 1; text-align: center;">Cancel</a>
+            <!-- 1. Smart Serial Number -->
+            <div style="margin-bottom: 20px;">
+                <label>Serial Number</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="serialInput" name="number" 
+                           value="{{ form.number.data or plantation.number or '' }}" 
+                           class="input-std" placeholder="AGRI-0000">
+                    
+                    <button type="button" onclick="generateSerial()" class="btn btn-secondary" style="white-space: nowrap;">
+                        <i class="fas fa-magic"></i> Auto-Gen
+                    </button>
+                </div>
+                <small class="text-muted">Click Auto-Gen for a unique ID.</small>
             </div>
+
+            <!-- 2. Farm Name -->
+            <div style="margin-bottom: 20px;">
+                <label>Farm Name</label>
+                <input type="text" name="name" 
+                       value="{{ form.name.data or plantation.name or '' }}" 
+                       class="input-std" placeholder="e.g. West Wing Hydroponics">
+            </div>
+            
+            <!-- 3. Native Date Picker (HTML5) -->
+            <div style="margin-bottom: 30px;">
+                <label>Registration Date</label>
+                <!-- type="date" creates the browser calendar -->
+                <input type="date" name="date_created" 
+                       value="{{ form.date_created.data or plantation.date_created_iso }}" 
+                       class="input-std">
+            </div>
+            
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                {% if plantation %}Update Asset{% else %}Register Farm{% endif %}
+            </button>
         </form>
     </div>
 </div>
+
+<script>
+    // The "Minimal/Quick" Logic
+    function generateSerial() {
+        // Generates AGRI- + Random 4 digits
+        const num = Math.floor(1000 + Math.random() * 9000);
+        document.getElementById('serialInput').value = "AGRI-" + num;
+    }
+
+    // Auto-set Date to Today if empty
+    window.addEventListener('DOMContentLoaded', (event) => {
+        const dateInput = document.querySelector('input[name="date_created"]');
+        if (!dateInput.value) {
+            dateInput.valueAsDate = new Date();
+        }
+    });
+</script>
 {% endblock %}

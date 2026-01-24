@@ -1,9 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, g
 # Make sure to import IncidentLog and IncidentForm
 from database import Database, Plantation, User, IncidentLog 
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from forms import FarmForm, IncidentForm
 from datetime import datetime
+from database import Crop 
 import random
 import functools
 import re
@@ -47,13 +48,14 @@ def load_logged_in_user():
 @app.route('/api/setup-mfa')
 @login_required
 def setup_mfa():
+    # 1. Generate Secret
     secret = pyotp.random_base32()
-    conn = db.get_connection()
-    conn.execute("UPDATE users SET mfa_secret = ? WHERE id = ?", (secret, session['user_id']))
-    conn.commit()
-    conn.close()
     
-    user_email = g.user.email if g.user.email else g.user.username
+    # 2. STORE IN SESSION ONLY (Do not save to DB yet!)
+    session['temp_mfa_secret'] = secret
+    
+    # 3. Generate QR Code
+    user_email = g.user.email or g.user.username
     uri = pyotp.totp.TOTP(secret).provisioning_uri(name=user_email, issuer_name="AgriScan AI")
     
     img = qrcode.make(uri)
@@ -61,7 +63,32 @@ def setup_mfa():
     img.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
     
-    return jsonify({"secret": secret, "qr_image": f"data:image/png;base64,{img_str}"})
+    return jsonify({
+        "secret": secret, 
+        "qr_image": f"data:image/png;base64,{img_str}"
+    })
+
+@app.route('/api/verify-mfa', methods=['POST'])
+@login_required
+def verify_mfa_setup():
+    data = request.json
+    token = data.get('token').replace(" ", "") 
+    secret = session.get('temp_mfa_secret')
+
+    if not secret:
+        return jsonify({"success": False, "message": "Session expired. Try again."})
+
+    # Verify the token against the temporary secret
+    totp = pyotp.TOTP(secret)
+    if totp.verify(token):
+        conn = db.get_connection()
+        conn.execute("UPDATE users SET mfa_secret = ? WHERE id = ?", (secret, session['user_id']))
+        conn.commit()
+        conn.close()
+        session.pop('temp_mfa_secret', None) # Clear temp
+        return jsonify({"success": True, "message": "MFA Enabled Successfully!"})
+    
+    return jsonify({"success": False, "message": "Invalid Code"})
 
 # --- LOGIN LOGIC ---
 @app.route('/', methods=['GET', 'POST'])
@@ -124,12 +151,29 @@ def home():
 @login_required
 def create_plantation():
     form = FarmForm(request.form)
-    if request.method == 'POST' and form.validate():
-        # Ideally you should save the farm here using the form data
-        # new_farm = Plantation(number=form.number.data, name=form.name.data, date_created=form.date_created.data)
-        # new_farm.save()
-        flash("New farm created successfully!", "success")
-        return redirect(url_for('home'))
+    
+    if request.method == 'POST':
+        if form.validate():
+ 
+            raw_date = form.date_created.data 
+            formatted_date = raw_date # Default to what came in
+            
+            try:
+ 
+                date_obj = datetime.strptime(raw_date, '%Y-%m-%d')
+                formatted_date = date_obj.strftime('%d/%m/%Y')
+            except ValueError:
+                pass # It was already correct or manual entry
+            
+            new_farm = Plantation(
+                number=form.number.data, 
+                name=form.name.data, 
+                date_created=formatted_date
+            )
+            new_farm.save()
+            flash("New farm created successfully!", "success")
+            return redirect(url_for('home'))
+            
     return render_template('update_plantation.html', plantation=None, form=form)
 
 @app.route('/farms')
@@ -200,19 +244,35 @@ def update_plantation(plantation_id):
     form = FarmForm(request.form)
 
     if request.method == 'POST' and form.validate():
+        # Same Date Conversion Logic
+        raw_date = form.date_created.data 
+        formatted_date = raw_date
+        try:
+            date_obj = datetime.strptime(raw_date, '%Y-%m-%d')
+            formatted_date = date_obj.strftime('%d/%m/%Y')
+        except ValueError:
+            pass
+
         plantation.number = form.number.data
         plantation.name = form.name.data
-        plantation.date_created = form.date_created.data
+        plantation.date_created = formatted_date
         plantation.save()
         
         flash('Farm updated successfully!', 'success')
         return redirect(url_for('view_farms'))
     
-    # Pre-fill form if GET request
+    # PRE-FILL LOGIC (IMPORTANT)
     if request.method == 'GET':
         form.number.data = plantation.number
         form.name.data = plantation.name
-        form.date_created.data = plantation.date_created
+        
+      
+        try:
+            db_date = datetime.strptime(plantation.date_created, '%d/%m/%Y')
+            # We inject a temporary attribute 'date_created_iso' to use in the template
+            plantation.date_created_iso = db_date.strftime('%Y-%m-%d')
+        except:
+            plantation.date_created_iso = ""
 
     return render_template('update_plantation.html', plantation=plantation, form=form)
 
@@ -248,6 +308,26 @@ def forgot_password():
     flash(f'Password reset link sent to {email}', 'success')
     return redirect(url_for('login'))
  
+
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    if request.method == 'POST':
+        # Handle Password Change
+        new_pass = request.form.get('new_password')
+        if new_pass:
+            hashed = generate_password_hash(new_pass)
+            conn = db.get_connection()
+            conn.execute("UPDATE users SET password = ? WHERE id = ?", (hashed, session['user_id']))
+            conn.commit()
+            conn.close()
+            flash("Password updated successfully.", "success")
+        return redirect(url_for('profile'))
+        
+    return render_template('profile.html', user=g.user)
+
+ 
+
 @app.route('/users', methods=['GET', 'POST'])
 @login_required
 def manage_users():
@@ -273,6 +353,48 @@ def manage_users():
     
     return render_template('users.html', users=User.get_all())
 
+@app.route("/cropstage")
+@login_required
+def cropstage_view():
+    crops = Crop.get_all_with_stages()
+    return render_template("cropstage.html", crops=crops)
+
+@app.route("/add-crop")
+@login_required
+def add_crop_page():
+    return render_template("cropstage_add.html")
+
+@app.route("/api/crops", methods=['GET', 'POST'])
+@login_required
+def handle_crops():
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        crop_name = (data.get("crop_name") or "").strip()
+        category = (data.get("category") or "").strip()
+        notes = (data.get("notes") or "").strip()
+
+        if not crop_name or not category:
+            return jsonify({"error": "Crop name and category are required"}), 400
+
+        Crop.create(crop_name, category, notes)
+        return jsonify({"message": "Crop created"}), 201
+    
+    # GET
+    crops = Crop.get_all_with_stages()
+    return jsonify(crops)
+
+@app.route("/crop_view")
+@login_required
+def view_list():
+    crops = Crop.get_all_with_stages()
+    return render_template("viewcrops.html", crops=crops)
+
+@app.route("/api/crops/<int:crop_id>", methods=["DELETE"])
+@login_required
+def delete_crop(crop_id):
+    Crop.delete(crop_id)
+    return jsonify({"message": "Crop deleted"}), 200
+
 @app.route('/users/<int:user_id>/delete', methods=['POST'])
 @login_required
 def delete_user(user_id):
@@ -295,6 +417,8 @@ def live_data():
         "timestamp": datetime.now().strftime("%H:%M:%S"),
         "color": "green" if status == "Healthy" else "red"
     })
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5500)

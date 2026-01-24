@@ -1,4 +1,3 @@
-# --- START OF FILE forms.py ---
 from wtforms import Form, StringField, PasswordField, SelectField, TextAreaField, validators
 
 class LoginForm(Form):
@@ -8,24 +7,22 @@ class LoginForm(Form):
 
 class FarmForm(Form):
     number = StringField('Serial Number', [
-        validators.DataRequired(message="Serial Number is required."),
-        validators.Length(min=3, max=20, message="Serial must be between 3-20 chars.")
+        validators.DataRequired(),
+        # We keep the Serial regex, but we will add a button to auto-fill it correctly
+        validators.Regexp(r'^[A-Z]{2,4}-\d{3,6}$', message="Format: XXXX-000 (e.g., AGRI-105)")
     ])
     name = StringField('Farm Name', [
-        validators.DataRequired(message="Farm Name is required.")
-    ])
-    date_created = StringField('Date Created', [
         validators.DataRequired(),
-        validators.Regexp(r'\d{2}/\d{2}/\d{4}', message="Format must be DD/MM/YYYY")
+        validators.Length(min=3, max=30)
     ])
+ 
+    date_created = StringField('Date Created', [validators.DataRequired()])
 
-# Adapted from SproutScan's "CreateUserForm", but for Farm Incidents
 class IncidentForm(Form):
     issue = StringField('Issue Title', [
         validators.DataRequired(),
         validators.Length(min=3, max=50)
     ])
-    # The SproutScan feature adaptation:
     category = SelectField('Category', choices=[
         ('Pest', 'Pest Infestation'),
         ('Hardware', 'Sensor/Drone Failure'),
