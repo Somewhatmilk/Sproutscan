@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Security Audit - AgriScan AI{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1><i class="fas fa-user-secret"></i> Security Audit Log</h1>
+            <p>Cryptographic verification of stored data.</p>
+        </div>
+        <div style="background: #fee2e2; color: #991b1b; padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: bold;">
+            ADMIN EYES ONLY
+        </div>
+    </div>
+
+    <!-- 1. USER TABLE -->
+    <div class="table-card" style="margin-bottom: 30px;">
+        <div style="padding: 20px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
+            <h3 style="margin:0; font-size: 1rem; color: #475569;">User Credential Hashing (Scrypt/SHA-256)</h3>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Role</th>
+                    <th>Stored Password Hash (Encrypted)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td style="font-weight: bold;">@{{ u.username }}</td>
+                    <td><span class="meta-tag">{{ u.role|upper }}</span></td>
+                    <td style="font-family: 'Courier New', monospace; font-size: 0.75rem; color: #e74c3c; word-break: break-all;">
+                        {{ u.password[:50] }}...
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 2. LOGS TABLE -->
+    <div class="table-card">
+        <div style="padding: 20px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
+            <h3 style="margin:0; font-size: 1rem; color: #475569;">Incident Data Encryption (Fernet/AES-128)</h3>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Raw Encrypted Issue Data</th>
+                    <th>Raw Encrypted Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td style="white-space: nowrap;">{{ log.entry_time }}</td>
+                    <td style="font-family: 'Courier New', monospace; font-size: 0.75rem; color: #2980b9;">
+                        <i class="fas fa-lock" style="margin-right:5px; opacity:0.5;"></i>
+                        {{ log.issue[:60] }}...
+                    </td>
+                    <td style="font-family: 'Courier New', monospace; font-size: 0.75rem; color: #7f8c8d;">
+                        {{ log.remarks[:40] }}...
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

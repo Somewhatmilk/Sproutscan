@@ -35,15 +35,21 @@
                     <th style="text-align: right;">Actions</th>
                 </tr>
             </thead>
-            <tbody id="farmTableBody">
+<tbody id="farmTableBody">
                 {% for p in plantations %}
-                <tr>
-                    <td style="font-family: monospace; font-weight: 600;">{{ p.number }}</td>
-                    <td>
-                        <div style="font-weight: 600;">{{ p.name }}</div>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <!-- 1. Serial -->
+                    <td style="padding: 18px; font-family: monospace; font-weight: 600; color: #64748b;">
+                        {{ p.number }}
+                    </td>
+                    
+                    <!-- 2. Name -->
+                    <td style="padding: 18px;">
+                        <div style="font-weight: 600; color: #334155;">{{ p.name }}</div>
                     </td>
 
-                     <td>
+                    <!-- 3. Status -->
+                    <td style="padding: 18px;">
                         {% if p.status == 'Error' %}
                             <span class="meta-tag" style="background: #fee2e2; color: #991b1b;">
                                 <i class="fas fa-exclamation-triangle"></i> ALERT
@@ -55,14 +61,25 @@
                         {% endif %}
                     </td>
 
-                    <td>{{ p.date_created }}</td>
+                    <!-- 4. Registered Date -->
+                    <td style="padding: 18px; color: #64748b;">{{ p.date_created }}</td>
                     
-                    <td style="text-align: right;">
+                    <!-- 5. Last Update (THIS WAS MISSING) -->
+                    <td style="padding: 18px; color: #94a3b8; font-size: 0.85rem;">
+                        {% if p.last_updated %}
+                            {{ p.last_updated }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    
+                    <!-- 6. Actions (Aligned Right) -->
+                    <td style="padding: 18px; text-align: right;">
                         <a href="{{ url_for('view_plantation', plantation_id=p.id) }}" class="btn-action btn-view">
                             View
                         </a>
                         {% if g.user.role != 'farmer' %}
-                        <a href="{{ url_for('update_plantation', plantation_id=p.id) }}" class="btn-action" style="color: #64748b;">
+                        <a href="{{ url_for('update_plantation', plantation_id=p.id) }}" class="btn-action" style="color: #64748b; margin-left: 5px;">
                             <i class="fas fa-edit"></i>
                         </a>
                         <form action="{{ url_for('delete_plantation', plantation_id=p.id) }}" method="POST" style="display:inline;">
@@ -74,7 +91,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="5" style="text-align:center; padding: 40px;">No farms found.</td></tr>
+                <tr><td colspan="6" style="text-align:center; padding: 40px;">No farms found.</td></tr>
                 {% endfor %}
             </tbody>
         </table>

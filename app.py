@@ -1,23 +1,116 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, g
-# Make sure to import IncidentLog and IncidentForm
-from database import Database, Plantation, User, IncidentLog 
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, g, Response
+from dotenv import load_dotenv  
+from authlib.integrations.flask_client import OAuth
+from database import Database, Plantation, User, IncidentLog, Crop, AIProfile
 from werkzeug.security import check_password_hash, generate_password_hash
 from forms import FarmForm, IncidentForm
 from datetime import datetime
-from database import Crop 
-import random
+import cv2   
+import threading
+import numpy as np
 import functools
-import re
+import time
+import random
 import pyotp
 import qrcode
 import io
+import os
 import base64
 
-app = Flask(__name__)
-app.secret_key = 'super-secret-key-agriscan'
 
-# Initialize DB once
+load_dotenv()
+app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', 'fallback-secret-key')
+
+# --- CONFIGURE OAUTH DYNAMICALLY ---
+app.config['GOOGLE_CLIENT_ID'] = os.getenv('GOOGLE_CLIENT_ID')
+app.config['GOOGLE_CLIENT_SECRET'] = os.getenv('GOOGLE_CLIENT_SECRET')
+
+# Safety Check (Optional but recommended)
+if not app.config['GOOGLE_CLIENT_ID'] or not app.config['GOOGLE_CLIENT_SECRET']:
+    print("WARNING: Google OAuth credentials not found in .env file.")
+
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=app.config['GOOGLE_CLIENT_ID'],
+    client_secret=app.config['GOOGLE_CLIENT_SECRET'],
+    access_token_url='https://accounts.google.com/o/oauth2/token',
+    access_token_params=None,
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    authorize_params=None,
+    api_base_url='https://www.googleapis.com/oauth2/v1/',
+    userinfo_endpoint='https://openidconnect.googleapis.com/v1/userinfo',
+    client_kwargs={'scope': 'openid email profile'},
+)
+ 
+
 db = Database()
+
+current_tracking_data = {
+    "x": 50, # Percentage (0-100)
+    "y": 50, # Percentage (0-100)
+    "detected": False
+}
+
+# --- CAMERA & TRACKING ENGINE ---
+class VideoCamera(object):
+    def __init__(self):
+        # 0 is usually the default webcam
+        self.video = cv2.VideoCapture(0)
+        # Load standard face detector (included in cv2)
+        self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+    def __del__(self):
+        self.video.release()
+
+    def get_frame(self):
+        success, image = self.video.read()
+        if not success:
+            return None
+            
+        # 1. ACTUAL PYTHON PREDICTION/TRACKING
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
+        
+        height, width, _ = image.shape
+        
+        global current_tracking_data
+        
+        if len(faces) > 0:
+            # Get the biggest face (closest "Plant")
+            (x, y, w, h) = faces[0]
+            
+            # Calculate center point in Percentage (for CSS positioning)
+            center_x = ((x + (w/2)) / width) * 100
+            center_y = ((y + (h/2)) / height) * 100
+            
+            # Update Global State
+            current_tracking_data["x"] = center_x
+            current_tracking_data["y"] = center_y
+            current_tracking_data["detected"] = True
+            
+            # Optional: Draw on the video stream itself (Debugging)
+            # cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        else:
+            current_tracking_data["detected"] = False
+
+        # Encode frame to JPEG
+        ret, jpeg = cv2.imencode('.jpg', image)
+        return jpeg.tobytes()
+
+# Global camera instance
+camera_instance = None
+
+def gen(camera):
+    while True:
+        frame = camera.get_frame()
+        if frame:
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
+ 
+ 
+
 
 # --- AUTH DECORATOR ---
 def login_required(f):
@@ -28,7 +121,15 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- CONTEXT PROCESSOR (Global User) ---
+@app.route('/video_feed')
+@login_required
+def video_feed():
+    global camera_instance
+    if camera_instance is None:
+        camera_instance = VideoCamera()
+    return Response(gen(camera_instance),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
 @app.before_request
 def load_logged_in_user():
     user_id = session.get('user_id')
@@ -326,7 +427,32 @@ def profile():
         
     return render_template('profile.html', user=g.user)
 
- 
+@app.route('/users/<int:user_id>/update', methods=['POST'])
+@login_required
+def update_user(user_id):
+    if g.user.role != 'admin':
+        return jsonify({"success": False, "message": "Unauthorized"}), 403
+
+    # Get data using .get() to avoid crashes
+    name = request.form.get('name')
+    email = request.form.get('email')
+    role = request.form.get('role')
+    bio = request.form.get('bio', '')
+
+    conn = db.get_connection()
+    try:
+        conn.execute(
+            "UPDATE users SET name=?, email=?, role=?, bio=? WHERE id=?", 
+            (name, email, role, bio, user_id)
+        )
+        conn.commit()
+        flash(f"User {name} updated successfully.", "success")
+    except Exception as e:
+        flash("Error updating user.", "error")
+    finally:
+        conn.close()
+
+    return redirect(url_for('manage_users'))
 
 @app.route('/users', methods=['GET', 'POST'])
 @login_required
@@ -337,13 +463,14 @@ def manage_users():
 
     if request.method == 'POST':
         default_pw = "123"
+        bio = request.form.get('bio', '') 
         success = User.create(
             request.form['username'], 
             request.form['email'], 
             default_pw,
             request.form['role'], 
             request.form['name'],
-            request.form['bio'], 
+            bio,
             "#" + "".join([random.choice('0123456789ABCDEF') for j in range(6)])
         )
         if success:
@@ -404,20 +531,127 @@ def delete_user(user_id):
     flash("User deleted", "success")
     return redirect(url_for('manage_users'))
 
-# --- API FOR LIVE DATA (Simulated AI) ---
+
+
+@app.route('/api/ai-profiles', methods=['GET', 'POST'])
+@login_required
+def handle_ai_profiles():
+    if request.method == 'POST':
+        data = request.json
+        profile = AIProfile(
+            crop_name=data['crop_name'],
+            base_confidence=int(data['base_confidence']),
+            risk_name=data['risk_name'],
+            risk_threshold=int(data['risk_threshold']),
+            variance=int(data['variance'])
+        )
+        profile.save()
+        return jsonify({"success": True})
+    
+    # GET
+    profiles = AIProfile.get_all()
+    return jsonify([p.__dict__ for p in profiles])
+
+@app.route('/api/admin/audit')
+@login_required
+def security_audit():
+    if g.user.role != 'admin': return jsonify([])
+    
+    # Fetch raw users to show hashed passwords
+    conn = db.get_connection()
+    users = conn.execute("SELECT username, password FROM users").fetchall()
+    
+    # Fetch raw logs to show encrypted text
+    logs = conn.execute("SELECT issue, remarks FROM pest_logs").fetchall()
+    conn.close()
+    
+    return jsonify({
+        "users": [dict(u) for u in users],
+        "logs": [dict(l) for l in logs]
+    })
+
+
+def write_detailed_log(crop, status, confidence, x, y):
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    log_line = f"[{timestamp}] TARGET:{crop} | STATUS:{status} | CONF:{confidence}% | COORD:({int(x)},{int(y)}) | LOG: Saved\n"
+    try:
+        with open("ai_logs.txt", "a") as f:
+            f.write(log_line)
+    except: pass
+
+@app.route('/api/snapshot', methods=['POST'])
+@login_required
+def save_snapshot():
+    global camera_instance
+    if not camera_instance:
+        camera_instance = VideoCamera()
+        
+    # Get the raw frame (not the bytes for browser, but the numpy array)
+    success, image = camera_instance.video.read()
+    
+    if success:
+        # Create folder if not exists
+        folder = os.path.join('static', 'snapshots')
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+            
+        # Generate filename
+        filename = f"snap_{int(time.time())}.jpg"
+        path = os.path.join(folder, filename)
+        
+        # Save
+        cv2.imwrite(path, image)
+        return jsonify({"success": True, "file": filename})
+    
+    return jsonify({"success": False, "message": "Camera Error"})
+
+# --- FIND YOUR EXISTING 'live_data' FUNCTION AND REPLACE IT WITH THIS ---
 @app.route('/api/live-data')
 @login_required
 def live_data():
-    status_options = ["Healthy", "Healthy", "Healthy", "Early Blight", "Rust Fungus"]
-    status = random.choice(status_options)
+    crop_name = request.args.get('crop', 'Unknown')
+    profile = AIProfile.get_by_name(crop_name)
     
+    # 1. READ REAL COORDINATES (From the Global Variable set in VideoCamera)
+    # The VideoCamera class in your code updates 'current_tracking_data'
+    box_x = current_tracking_data["x"]
+    box_y = current_tracking_data["y"]
+    is_detected = current_tracking_data["detected"]
+    
+    # 2. Logic: If detected, Confidence is HIGH. If not, LOW.
+    req_base = request.args.get('base_override')
+    base = int(req_base) if req_base else profile.base_confidence
+    
+    if is_detected:
+        # High confidence because we found the object/face
+        fluctuation = random.uniform(-2, 2)
+        current_confidence = round(base + fluctuation, 1)
+        status = "TARGET LOCKED"
+        color = "#2ecc71" # Green
+        insight = f"Object detected at {int(box_x)}%, {int(box_y)}%. Assessing health..."
+    else:
+        # Low confidence because screen is empty
+        current_confidence = round(random.uniform(5, 15), 1) 
+        status = "SCANNING..."
+        color = "#e74c3c" # Red
+        insight = "No active targets in sector. Searching..."
+        
+        # OPTIONAL: Move box to center if nothing found
+        box_x = 50
+        box_y = 50
+
+    current_confidence = max(0, min(100, current_confidence))
+    
+    # Write logs
+    write_detailed_log(crop_name, status, current_confidence, int(box_x), int(box_y))
+
     return jsonify({
         "status": status,
-        "confidence": random.uniform(0.75, 0.99),
-        "timestamp": datetime.now().strftime("%H:%M:%S"),
-        "color": "green" if status == "Healthy" else "red"
+        "confidence": current_confidence,
+        "insight": insight,
+        "color": color,
+        "box": { "x": box_x, "y": box_y } # THIS NOW SENDS REAL COORDINATES
     })
-
 
 
 if __name__ == '__main__':

@@ -13,7 +13,6 @@
                 <span style="font-size: 0.5em; opacity: 0.7; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">{{ plantation.number }}</span>
             </h2>
         </div>
- 
     </div>
 
     <!-- 2. MAIN COCKPIT GRID -->
@@ -22,248 +21,303 @@
         <!-- LEFT: VIDEO & HUD -->
         <div style="position: relative; border-radius: 12px; overflow: hidden; background: #000; box-shadow: var(--shadow-md);">
             
-            <video id="liveVideo" autoplay muted playsinline loop 
-                    poster="{{ url_for('static', filename='images/farm5.jpg') }}"
-                    style="width: 100%; height: 100%; object-fit: cover; opacity: 0.9;">
-            </video>
+            <!-- VIDEO FEED CONTAINER -->
+            <div id="visualContainer" style="width: 100%; height: 100%; position: relative;">
+                <img id="liveFeed" src="{{ url_for('video_feed') }}" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                <img id="staticFeed" src="{{ url_for('static', filename='images/farm1.jpg') }}" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+            </div>
 
-            <!-- TRANSPARENT HUD OVERLAY (Top Left) -->
-            <div class="hud-container">
-                <!-- AI Status -->
-                <div class="hud-item hud-success">
-                    <div class="hud-label">AI Analysis</div>
-                    <div class="hud-value" id="aiStatusText">OPTIMAL</div>
+            <!-- 1. AI PILL (Top Left - UPGRADED) -->
+            <div id="ai-pill" class="glass-pill" style="top: 20px; left: 20px; z-index: 30; width: 220px;">
+                <div class="pill-header">
+                    <div id="ai-indicator" class="pulsing-dot"></div>
+                    <div style="display: flex; flex-direction: column; line-height: 1.1;">
+                        <span id="ai-status" style="font-weight: 700; font-size: 0.9rem;">INITIALIZING...</span>
+                        <div style="display: flex; gap: 8px; font-size: 0.7rem; opacity: 0.8; margin-top: 2px;">
+                            <span id="ai-conf">--%</span>
+                            <span>&bull;</span>
+                            <span id="ai-latency"><i class="fas fa-bolt" style="color: #f1c40f;"></i> 0ms</span>
+                        </div>
+                    </div>
                 </div>
-                <!-- Temp -->
-                <div class="hud-item hud-warning">
-                    <div class="hud-label">Temperature</div>
-                    <div class="hud-value">24.5°C <span style="font-size: 0.7em; opacity: 0.7;">(+1.2%)</span></div>
-                </div>
-                <!-- Moisture -->
-                <div class="hud-item hud-info">
-                    <div class="hud-label">Soil Moisture</div>
-                    <div class="hud-value">62% <span style="font-size: 0.7em; opacity: 0.7;">(Stable)</span></div>
+                <!-- Extra Technical Details -->
+                <div class="pill-details" style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 8px; padding-top: 8px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: #aaa; margin-bottom: 5px;">
+                        <span>MODEL: YOLOv8-Nano</span>
+                        <span>FPS: 24</span>
+                    </div>
+                    <p id="ai-insight" style="font-size: 0.75rem; color: #eee; margin: 0; line-height: 1.4;">Connecting to neural engine...</p>
                 </div>
             </div>
 
-            <!-- TIMELAPSE CONTROLS (Bottom Center Overlay) -->
-            <div style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); padding: 8px 20px; border-radius: 30px; display: flex; gap: 20px; color: white; backdrop-filter: blur(5px);">
-                <i class="fas fa-backward" style="cursor: pointer; opacity: 0.7;"></i>
-                <span style="font-size: 0.8rem; font-weight: 600;">LIVE FEED</span>
-                <i class="fas fa-camera" style="cursor: pointer; opacity: 0.7;" title="Take Snapshot" onclick="takeSnapshot()"></i>
+            <!-- 2. CROP SELECTOR (Top Right) -->
+            <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
+                <select id="activeCropSelect" onchange="updateAI()" 
+                        style="padding: 8px 12px; border-radius: 20px; border: none; background: rgba(255,255,255,0.9); font-weight: bold; cursor: pointer;">
+                    <!-- Populated by JS -->
+                </select>
             </div>
 
-            <!-- DRONE SIMULATION OVERLAY -->
-            <div id="droneOverlay" class="drone-overlay">
-                <i class="fas fa-drone-alt fa-spin" style="font-size: 3rem; margin-bottom: 20px; color: var(--primary);"></i>
-                <h2>Deploying UAV-1</h2>
-                <p>Pathfinding to Sector 4...</p>
-                <button onclick="stopDrone()" class="btn btn-secondary" style="margin-top: 20px;">Return to Base</button>
+            <!-- 3. TRACKING BOX -->
+            <div id="trackingBox" class="tracking-box" style="top: 50%; left: 50%;">
+                <div class="box-label" id="boxStatus">SCANNING</div>
+                <div class="box-label" style="align-self: flex-end;" id="boxConf">--%</div>
             </div>
 
-            <!-- SNAPSHOT FLASH -->
-            <div id="flash" style="position:absolute; top:0; left:0; width:100%; height:100%; background:white; opacity:0; pointer-events:none;"></div>
-        </div>
-
-        <!-- RIGHT: TABBED SIDEBAR -->
-        <div style="display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; height: 100%; box-shadow: var(--shadow-md);">
+            <!-- 4. CONTROLS (Bottom Center) -->
+            <div style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.75); padding: 10px 25px; border-radius: 40px; display: flex; align-items: center; gap: 25px; color: white; backdrop-filter: blur(10px); z-index: 20; border: 1px solid rgba(255,255,255,0.1);">
+                <div onclick="takeSnapshot()" style="cursor: pointer; text-align: center; transition: 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color='white'">
+                    <i class="fas fa-camera" style="font-size: 1.2rem; display: block;"></i>
+                    <span style="font-size: 0.6rem; font-weight: bold; margin-top: 2px; display: block;">SNAP</span>
+                </div>
+                <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.2);"></div>
+                <div id="camToggleBtn" onclick="toggleCamera()" style="cursor: pointer; text-align: center; transition: 0.2s; color: #2ecc71;" title="Toggle Live/Static">
+                    <i id="camToggleIcon" class="fas fa-power-off" style="font-size: 1.2rem; display: block;"></i>
+                    <span id="camToggleText" style="font-size: 0.6rem; font-weight: bold; margin-top: 2px; display: block;">LIVE ON</span>
+                </div>
+            </div>
             
-            <!-- Tabs -->
+            <div id="flash" style="position:absolute; top:0; left:0; width:100%; height:100%; background:white; opacity:0; pointer-events:none; transition: opacity 0.1s;"></div>
+        </div>
+
+        <!-- RIGHT: SIDEBAR -->
+         <div style="display: flex; flex-direction: column; background: white; border-radius: 12px; overflow: hidden; height: 100%; box-shadow: var(--shadow-md);">
+            
             <div class="tab-header">
-                <button class="tab-btn active" onclick="switchTab('logs')"><i class="fas fa-list"></i> Logs</button>
-                <button class="tab-btn" onclick="switchTab('analytics')"><i class="fas fa-chart-line"></i> Data</button>
-                <button class="tab-btn" onclick="switchTab('actions')"><i class="fas fa-robot"></i> Actions</button>
+                <button class="tab-btn active" onclick="switchTab('logs')">Live Logs</button>
+                <button class="tab-btn" onclick="switchTab('actions')">Controls</button>
             </div>
 
-            <!-- TAB 1: LOGS (The Incident List) -->
-            <div id="tab-logs" class="tab-content active">
-                <div class="log-scroll-area" style="padding-top: 10px;">
-                    <!-- New Incident Button inside the log tab -->
-                    <button onclick="document.getElementById('logModal').style.display='flex'" class="btn btn-outline" style="width: 90%; margin: 0 auto 15px auto; display: flex; border-style: dashed;">
-                        <i class="fas fa-plus"></i> Report New Issue
-                    </button>
-
-                    {% for log in logs %}
-                    <div style="padding: 12px 15px; border-bottom: 1px solid #f1f5f9;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <strong style="color: #333; font-size: 0.9rem;">{{ log.issue }}</strong>
-                            <span class="badge-mini {{ 'resolved' if log.resolved else 'active' }}">
-                                {{ 'RESOLVED' if log.resolved else 'OPEN' }}
-                            </span>
+            <!-- TAB 1: LOGS -->
+            <div id="tab-logs" class="tab-content active" style="padding: 15px; display: flex; flex-direction: column; height: 100%;">
+                <div class="config-section">
+                    <div class="config-title"><i class="fas fa-sliders-h"></i> Live Configuration</div>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <span>Expected Confidence</span>
+                            <span id="txt_base" style="color:var(--primary);">95%</span>
                         </div>
-                        <p style="font-size: 0.8rem; color: #64748b; margin: 0 0 8px;">{{ log.remarks }}</p>
-                        <div style="font-size: 0.7rem; color: #94a3b8;">
-                            {{ log.entry_time }} &bull; {{ log.reporter_name }}
+                        <input type="range" id="ui_base" min="0" max="100" value="95" oninput="document.getElementById('txt_base').innerText=this.value+'%'">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <span>Risk Threshold</span>
+                            <span id="txt_thresh" style="color:var(--danger);">70%</span>
                         </div>
+                        <input type="range" id="ui_thresh" min="0" max="100" value="70" oninput="document.getElementById('txt_thresh').innerText=this.value+'%'">
                     </div>
-                    {% else %}
-                    <div style="text-align: center; padding: 30px; color: #ccc;">No incidents.</div>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- TAB 2: ANALYTICS (Power BI Lite) -->
-            <div id="tab-analytics" class="tab-content" style="padding: 15px; overflow-y: auto;">
-                <h4 style="color: var(--secondary); margin-bottom: 10px;">Growth Trend (7 Days)</h4>
-                <div style="height: 150px; width: 100%;">
-                    <canvas id="growthChart"></canvas>
-                </div>
-                
-                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                
-                <h4 style="color: var(--secondary); margin-bottom: 10px;">Spectral Health (NDVI)</h4>
-                <div style="height: 150px; width: 100%;">
-                    <canvas id="ndviChart"></canvas>
                 </div>
 
-                <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin-top: 20px; font-size: 0.8rem; color: #666;">
-                    <strong>Insight:</strong> Moisture retention is 15% higher than last month. Predicted yield increase: 4%.
-                </div>
-            </div>
-
-            <!-- TAB 3: ACTIONS (Drone & Reports) -->
-            <div id="tab-actions" class="tab-content" style="padding: 20px;">
-                
-                <h4 style="margin-bottom: 15px; color: var(--secondary);">Hardware Control</h4>
-                
-                <div style="border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <strong><i class="fas fa-plane"></i> Drone Patrol</strong>
-                        <span class="badge-mini resolved">READY</span>
+                <div style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                    <div class="config-title"><i class="fas fa-terminal"></i> System Feed</div>
+                    <div id="terminalFeed" class="terminal-feed">
+                        <div class="log-line">System ready. Waiting for video feed...</div>
                     </div>
-                    <p style="font-size: 0.8rem; color: #777; margin-bottom: 15px;">Deploy autonomous drone for spectral imaging scan of Sector 4.</p>
-                    <button onclick="deployDrone()" class="btn btn-primary" style="width: 100%;">Initialize Launch</button>
+                    <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 5px; text-align: right;">
+                        Log file: /server/ai_logs.txt
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: ACTIONS (UPGRADED) -->
+            <div id="tab-actions" class="tab-content" style="padding: 20px; overflow-y: auto;">
+                
+                <div class="config-title" style="margin-bottom: 15px;">Environment Control</div>
+                
+                <!-- Irrigation Toggle -->
+                <div class="card" style="padding: 15px; border: 1px solid #eee; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div style="font-weight: bold; font-size: 0.9rem;"><i class="fas fa-tint" style="color: #3498db;"></i> Irrigation</div>
+                        <div style="font-size: 0.75rem; color: #888;" id="irrigationStatus">System Standby</div>
+                    </div>
+                    <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 22px;">
+                        <input type="checkbox" onchange="toggleSystem('irrigation', this)">
+                        <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px;"></span>
+                        <span class="slider-knob" style="position: absolute; content: ''; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+                    </label>
                 </div>
 
-                <h4 style="margin-bottom: 15px; color: var(--secondary);">Data Exports</h4>
-                <button onclick="generateReport()" class="btn btn-secondary" style="width: 100%; margin-bottom: 10px;">
-                    <i class="fas fa-file-pdf"></i> Download PDF Summary
+                <!-- Lighting Toggle -->
+                <div class="card" style="padding: 15px; border: 1px solid #eee; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div style="font-weight: bold; font-size: 0.9rem;"><i class="fas fa-lightbulb" style="color: #f1c40f;"></i> Grow Lights</div>
+                        <div style="font-size: 0.75rem; color: #888;" id="lightStatus">System Off</div>
+                    </div>
+                    <label class="switch" style="position: relative; display: inline-block; width: 40px; height: 22px;">
+                        <input type="checkbox" onchange="toggleSystem('light', this)">
+                        <span class="slider round" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px;"></span>
+                        <span class="slider-knob" style="position: absolute; content: ''; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+                    </label>
+                </div>
+
+                <div class="config-title" style="margin-bottom: 15px; margin-top: 10px;">Data Operations</div>
+
+                <button class="btn btn-outline" style="width: 100%; margin-bottom: 10px; justify-content: space-between;" onclick="exportLogs()">
+                    <span>Download CSV Logs</span>
+                    <i class="fas fa-file-download"></i>
                 </button>
-                <button onclick="generateReport()" class="btn btn-outline" style="width: 100%; border-color: #ddd;">
-                    <i class="fas fa-file-csv"></i> Export Sensor CSV
+
+                <button class="btn btn-secondary" style="width: 100%; justify-content: space-between;" onclick="alert('Sensors Recalibrating... Please wait 10s.');">
+                    <span>Recalibrate Sensors</span>
+                    <i class="fas fa-sync-alt"></i>
                 </button>
 
             </div>
-
         </div>
     </div>
 </div>
 
-<!-- ADD LOG MODAL (Stays the same) -->
-<div id="logModal" class="modal-overlay">
-    <div class="modal-box" style="text-align: left; width: 400px;">
-        <h3 style="margin-bottom: 15px; text-align: center;">New Incident Report</h3>
-        <p class="text-muted" style="font-size: 0.85rem; text-align: center; margin-bottom: 20px;">
-            This will log an event in the history tab and alert field staff.
-        </p>
-        <form action="{{ url_for('add_pest_log', plantation_id=plantation.id) }}" method="POST">
-            <input type="text" name="issue" class="input-std" placeholder="Issue Title" required>
-            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                <select name="category" class="input-std">
-                    <option value="Pest">Pest</option>
-                    <option value="Hardware">Hardware</option>
-                    <option value="Irrigation">Irrigation</option>
-                </select>
-                <select name="severity" class="input-std">
-                    <option value="Medium">Medium Severity</option>
-                    <option value="High">High Severity</option>
-                    <option value="Low">Low Severity</option>
-                </select>
-            </div>
-            <textarea name="remarks" class="input-std" rows="3" placeholder="Technical Remarks..."></textarea>
-            <button type="submit" class="btn btn-danger" style="width: 100%;">Log Incident</button>
-            <button type="button" onclick="document.getElementById('logModal').style.display='none'" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">Cancel</button>
-        </form>
-    </div>
-</div>
+<style>
+    /* Toggle Switch CSS */
+    input:checked + .slider { background-color: var(--success); }
+    input:checked + .slider .slider-knob { transform: translateX(18px); }
+</style>
 
 <script>
-    // 1. TABS LOGIC
+    let isLive = true;
+
+    // --- 1. SYSTEM TOGGLES (ACTIONS TAB) ---
+    function toggleSystem(type, el) {
+        const statusId = type + 'Status';
+        const label = document.getElementById(statusId);
+        if(el.checked) {
+            label.innerText = "Active - Running";
+            label.style.color = "var(--success)";
+        } else {
+            label.innerText = "System Standby";
+            label.style.color = "#888";
+        }
+    }
+
+    // --- 2. EXPORT LOGS (ACTIONS TAB) ---
+    function exportLogs() {
+        // Simple client-side CSV generation from the current terminal feed
+        let csvContent = "data:text/csv;charset=utf-8,Time,Message\n";
+        const rows = document.querySelectorAll('.log-line');
+        rows.forEach(row => {
+            csvContent += row.innerText.replace(',', ';') + "\n"; // Basic cleaning
+        });
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "agriscan_logs.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    // --- 3. CAMERA TOGGLE ---
+    function toggleCamera() {
+        isLive = !isLive;
+        const liveFeed = document.getElementById('liveFeed');
+        const staticFeed = document.getElementById('staticFeed');
+        const trackingBox = document.getElementById('trackingBox');
+        const toggleIcon = document.getElementById('camToggleIcon');
+        const toggleText = document.getElementById('camToggleText');
+        const toggleBtn = document.getElementById('camToggleBtn');
+
+        if (isLive) {
+            liveFeed.style.display = 'block';
+            staticFeed.style.display = 'none';
+            trackingBox.style.display = 'flex';
+            toggleIcon.className = 'fas fa-power-off';
+            toggleBtn.style.color = '#2ecc71'; 
+            toggleText.innerText = 'LIVE ON';
+        } else {
+            liveFeed.style.display = 'none';
+            staticFeed.style.display = 'block';
+            trackingBox.style.display = 'none';
+            const randomNum = Math.floor(Math.random() * 5) + 1;
+            staticFeed.src = `/static/images/farm${randomNum}.jpg`;
+            toggleIcon.className = 'fas fa-video-slash';
+            toggleBtn.style.color = 'var(--danger)';
+            toggleText.innerText = 'OFFLINE';
+        }
+    }
+
+    // --- 4. SNAPSHOT ---
+    async function takeSnapshot() {
+        const flash = document.getElementById('flash');
+        flash.style.opacity = '1';
+        setTimeout(() => flash.style.opacity = '0', 100);
+        try {
+            await fetch('/api/snapshot', { method: 'POST' });
+        } catch(e) { console.error(e); }
+    }
+
+    // --- 5. INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProfiles();
+        setInterval(updateAI, 200); 
+    });
+
+    async function loadProfiles() {
+        const res = await fetch('/api/ai-profiles');
+        const profiles = await res.json();
+        const select = document.getElementById('activeCropSelect');
+        profiles.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.crop_name;
+            opt.innerText = p.crop_name;
+            select.appendChild(opt);
+        });
+    }
+
+    // --- 6. MAIN AI LOOP (FIXED) ---
+    async function updateAI() {
+        if (!isLive) return;
+
+        const crop = document.getElementById('activeCropSelect').value || 'Unknown';
+        const base = document.getElementById('ui_base').value;
+        const thresh = document.getElementById('ui_thresh').value;
+
+        const res = await fetch(`/api/live-data?crop=${encodeURIComponent(crop)}&base_override=${base}&thresh_override=${thresh}`);
+        const data = await res.json();
+
+        // A. UPDATE TRACKING BOX
+        const box = document.getElementById('trackingBox');
+        box.style.left = data.box.x + '%';
+        box.style.top = data.box.y + '%';
+        box.style.borderColor = data.color;
+        box.style.boxShadow = `0 0 15px ${data.color}`;
+
+        document.getElementById('boxStatus').innerText = data.status;
+        document.getElementById('boxConf').innerText = data.confidence + '%';
+
+        // B. UPDATE AI PILL (FIXED - This was missing)
+        document.getElementById('ai-status').innerText = data.status;
+        document.getElementById('ai-status').style.color = data.color; // Match status color
+        document.getElementById('ai-conf').innerText = data.confidence + '%';
+        document.getElementById('ai-insight').innerText = data.insight;
+        
+        // Update Latency Simulation
+        const latency = Math.floor(Math.random() * 20 + 10);
+        document.getElementById('ai-latency').innerHTML = `<i class="fas fa-bolt" style="color: #f1c40f;"></i> ${latency}ms`;
+
+        // Update Pill Dot
+        document.getElementById('ai-indicator').style.background = data.color;
+
+        // C. LOGS
+        addLog(data);
+    }
+
+    function addLog(data) {
+        const feed = document.getElementById('terminalFeed');
+        const now = new Date().toLocaleTimeString();
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        const statusHtml = `<span style="color:${data.color}">${data.status}</span>`;
+        line.innerHTML = `<span class="log-time">[${now}]</span> ${statusHtml} | Conf: ${data.confidence}% | ${data.insight}`;
+        feed.appendChild(line); 
+        feed.scrollTop = feed.scrollHeight;
+        if (feed.children.length > 50) feed.removeChild(feed.lastChild);
+    }
+
     function switchTab(tabId) {
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        
         document.getElementById('tab-' + tabId).classList.add('active');
         event.target.classList.add('active');
-    }
-
-    // 2. DRONE SIMULATION
-    function deployDrone() {
-        const overlay = document.getElementById('droneOverlay');
-        overlay.style.display = 'flex';
-        // Simulate a 5 second mission
-        setTimeout(() => {
-            alert("Mission Complete. Data syncing to cloud.");
-            overlay.style.display = 'none';
-        }, 5000);
-    }
-    function stopDrone() {
-        document.getElementById('droneOverlay').style.display = 'none';
-    }
-
-    // 3. REPORT SIMULATION
-    function generateReport() {
-        const btn = event.target;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-        btn.disabled = true;
-        
-        setTimeout(() => {
-            btn.innerHTML = '<i class="fas fa-check"></i> Downloaded';
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }, 2000);
-        }, 1500);
-    }
-
-    // 4. SNAPSHOT
-    function takeSnapshot() {
-        const flash = document.getElementById('flash');
-        flash.style.opacity = '1';
-        flash.style.transition = 'opacity 0.1s';
-        setTimeout(() => { flash.style.opacity = '0'; }, 100);
-    }
-
-    // 5. CHART.JS (Power BI Style)
-    document.addEventListener("DOMContentLoaded", function() {
-        // Growth Chart
-        new Chart(document.getElementById('growthChart'), {
-            type: 'line',
-            data: {
-                labels: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
-                datasets: [{
-                    label: 'Canopy Height (cm)',
-                    data: [12, 12.5, 13, 13.2, 14, 14.5, 15],
-                    borderColor: '#2ecc71',
-                    tension: 0.4,
-                    fill: true,
-                    backgroundColor: 'rgba(46, 204, 113, 0.1)'
-                }]
-            },
-            options: { plugins: { legend: {display: false} }, maintainAspectRatio: false }
-        });
-
-        // NDVI Chart
-        new Chart(document.getElementById('ndviChart'), {
-            type: 'bar',
-            data: {
-                labels: ['Sec 1', 'Sec 2', 'Sec 3', 'Sec 4'],
-                datasets: [{
-                    label: 'NDVI Score',
-                    data: [0.8, 0.75, 0.4, 0.9], // Sector 3 is low
-                    backgroundColor: ['#2ecc71', '#2ecc71', '#e74c3c', '#2ecc71']
-                }]
-            },
-            options: { plugins: { legend: {display: false} }, maintainAspectRatio: false }
-        });
-    });
-
-    // 6. Camera
-    if(navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => document.getElementById('liveVideo').srcObject = stream)
-        .catch(err => console.log("Camera error"));
     }
 </script>
 {% endblock %}

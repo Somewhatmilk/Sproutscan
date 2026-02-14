@@ -1,7 +1,9 @@
 import sqlite3
 from werkzeug.security import generate_password_hash
 from datetime import datetime
+from security import sec
 
+ 
 class Database:
     def __init__(self, db_name='plantations.db'):
         self.db_name = db_name
@@ -262,19 +264,37 @@ class IncidentLog:
     def __init__(self, **kwargs):
         self.id = kwargs.get('id')
         self.plantation_id = kwargs.get('plantation_id')
-        self.issue = kwargs.get('issue')
-        self.category = kwargs.get('category', 'Other') 
-        self.severity = kwargs.get('severity')
-        self.reporter_name = kwargs.get('reporter_name')
-        self.entry_time = kwargs.get('entry_time') or datetime.now().strftime('%Y-%m-%d %H:%M')
-        self.remarks = kwargs.get('remarks')
+        
+ 
+        raw_issue = kwargs.get('issue', '')
+        raw_remarks = kwargs.get('remarks', '')
+        
+        try:
+            self.issue = sec.decrypt_data(raw_issue) if raw_issue and len(raw_issue) > 50 else raw_issue
+        except: 
+            self.issue = raw_issue
+
+        try:
+            self.category = kwargs.get('category', 'Other')
+            self.severity = kwargs.get('severity')
+            self.reporter_name = kwargs.get('reporter_name')
+            self.entry_time = kwargs.get('entry_time') or datetime.now().strftime('%Y-%m-%d %H:%M')
+            
+            self.remarks = sec.decrypt_data(raw_remarks) if raw_remarks and len(raw_remarks) > 50 else raw_remarks
+        except:
+            self.remarks = raw_remarks
+            
         self.resolved = kwargs.get('resolved', 0)
 
     def save(self):
         db = Database()
         conn = db.get_connection()
         
-        # Robust column check
+ 
+        encrypted_issue = sec.encrypt_data(self.issue)
+        encrypted_remarks = sec.encrypt_data(self.remarks)
+
+ 
         try:
             conn.execute("ALTER TABLE pest_logs ADD COLUMN category TEXT DEFAULT 'Other'")
         except:
@@ -285,12 +305,12 @@ class IncidentLog:
                 UPDATE pest_logs 
                 SET issue=?, category=?, severity=?, resolved=?, remarks=? 
                 WHERE id=?''', 
-                (self.issue, self.category, self.severity, self.resolved, self.remarks, self.id))
+                (encrypted_issue, self.category, self.severity, self.resolved, encrypted_remarks, self.id))
         else:
             conn.execute('''
                 INSERT INTO pest_logs (plantation_id, issue, category, severity, reporter_name, entry_time, remarks, resolved) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                (self.plantation_id, self.issue, self.category, self.severity, self.reporter_name, self.entry_time, self.remarks, self.resolved))
+                (self.plantation_id, encrypted_issue, self.category, self.severity, self.reporter_name, self.entry_time, encrypted_remarks, self.resolved))
         conn.commit()
         conn.close()
 
@@ -365,3 +385,77 @@ class Crop:
         conn.execute("DELETE FROM crops WHERE id = ?", (crop_id,))
         conn.commit()
         conn.close()
+
+      
+
+class AIProfile:
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id')
+        self.crop_name = kwargs.get('crop_name')
+        self.base_confidence = kwargs.get('base_confidence', 95) # e.g. 95%
+        self.risk_name = kwargs.get('risk_name', 'Unknown Issue') # e.g. "Fungus"
+        self.variance = kwargs.get('variance', 5) # How much it fluctuates
+        
+        # The logic: If confidence drops below this, trigger the risk
+        self.risk_threshold = kwargs.get('risk_threshold', 70) 
+
+    def save(self):
+        db = Database()
+        conn = db.get_connection()
+        
+        # Ensure table exists
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS ai_profiles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                crop_name TEXT NOT NULL,
+                base_confidence INTEGER,
+                risk_name TEXT,
+                variance INTEGER,
+                risk_threshold INTEGER
+            )
+        ''')
+        
+        if self.id:
+            conn.execute('DELETE FROM ai_profiles WHERE id = ?', (self.id,))
+            
+        conn.execute('''
+            INSERT INTO ai_profiles (crop_name, base_confidence, risk_name, variance, risk_threshold)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (self.crop_name, self.base_confidence, self.risk_name, self.variance, self.risk_threshold))
+        
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def get_all():
+        db = Database()
+        conn = db.get_connection()
+        # Create table if not exists (lazy init)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS ai_profiles (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                crop_name TEXT NOT NULL,
+                base_confidence INTEGER,
+                risk_name TEXT,
+                variance INTEGER,
+                risk_threshold INTEGER
+            )
+        ''')
+        rows = conn.execute("SELECT * FROM ai_profiles").fetchall()
+        conn.close()
+        
+        # If empty, seed default
+        if not rows:
+            default = AIProfile(crop_name="Tomato (Default)", base_confidence=92, risk_name="Early Blight", variance=10, risk_threshold=75)
+            default.save()
+            return [default]
+            
+        return [AIProfile(**dict(row)) for row in rows]
+
+    @staticmethod
+    def get_by_name(name):
+        profiles = AIProfile.get_all()
+        for p in profiles:
+            if p.crop_name == name:
+                return p
+        return profiles[0] # Return first as fallback

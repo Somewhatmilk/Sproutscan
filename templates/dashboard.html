@@ -18,75 +18,79 @@
         </div>
     </div>
 
-    <!-- GRID SECTION -->
-    <div class="cards-grid" id="farmGrid">
+
+   <div class="cards-grid" id="farmGrid">
     
-        <!-- Register Card -->
-        <a href="{{ url_for('create_plantation') }}" class="card add-card">
-            <div class="add-icon-circle">
-                <i class="fas fa-plus"></i>
-            </div>
-            <h3>Register New Farm</h3>
-            <p>Connect hardware</p>
-        </a>  
- 
-        <!-- SPLIT CARD DESIGN -->
-        {% for farm in plantations %}
-        <div class="farm-card-split filter-target" data-name="{{ farm.name }} {{ farm.number }}">
+    <!-- 1. The Add Card (Styled to match height) -->
+    <a href="{{ url_for('create_plantation') }}" class="card add-card">
+        <div class="add-icon-circle">
+            <i class="fas fa-plus"></i>
+        </div>
+        <h3>Register New Farm</h3>
+        <p>Connect hardware</p>
+    </a>  
+
+    <!-- 2. The New Hybrid Card -->
+    {% for farm in plantations %}
+    <div class="hybrid-card filter-target" data-name="{{ farm.name|lower }} {{ farm.number|lower }}">
+        
+        <!-- Top Section: Image & Floating Tags -->
+        <div class="card-visual" style="background-image: url('{{ url_for('static', filename='images/farm' ~ (loop.index % 5 + 1) ~ '.jpg') }}');">
+            <div class="overlay-gradient"></div>
             
-            <!-- Left: Image -->
-            <div class="split-img" style="background-image: url('{{ url_for('static', filename='images/farm' ~ (loop.index % 5 + 1) ~ '.jpg') }}');"></div>
+            <!-- Floating Serial Tag -->
+            <span class="hybrid-serial">{{ farm.number }}</span>
             
-            <!-- Right: Info -->
-            <div class="split-content">
-                
-                <!-- Top Row: Serial & Status Dot -->
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span class="serial-tag">{{ farm.number }}</span>
-                    
-                    {% if farm.status == 'Error' %}
-                        <span class="dot-indicator red" title="High Severity Issues"></span>
+            <!-- Floating Status Pill -->
+            {% if farm.has_error %}
+                <span class="hybrid-status error">
+                    <i class="fas fa-exclamation-triangle"></i> Alert
+                </span>
+            {% else %}
+                <span class="hybrid-status online">
+                    <i class="fas fa-circle"></i> Live
+                </span>
+            {% endif %}
+        </div>
+
+        <!-- Bottom Section: Data & Actions -->
+        <div class="card-body">
+            <div class="body-header">
+                <h3>{{ farm.name }}</h3>
+                <span class="update-time">
+                    {% if farm.last_updated %}
+                        {{ farm.last_updated.split(' ')[1] }}
                     {% else %}
-                        <span class="dot-indicator green" title="Online"></span>
+                        Now
                     {% endif %}
-                </div>
+                </span>
+            </div>
 
-                <!-- Middle: Name, Last Update, Signal -->
-                <div style="margin-top: 10px;">
-                    <h3 style="margin: 0; font-size: 1.1rem; color: #2c3e50;">{{ farm.name }}</h3>
-                    
-                    <!-- FIXED: Last Updated integrated here -->
-                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">
-                        {% if farm.last_updated %}
-                            <i class="fas fa-clock"></i> {{ farm.last_updated.split(' ')[1] }}
-                        {% else %}
-                            <i class="fas fa-clock"></i> Just now
-                        {% endif %}
-                    </div>
-
-                    <p style="font-size: 0.8rem; color: #7f8c8d; margin-top: 8px;">
-                        {% if farm.status == 'Error' %}
-                            <i class="fas fa-exclamation-circle" style="color: var(--danger)"></i> Action Required
-                        {% else %}
-                            <i class="fas fa-wifi" style="color: var(--success)"></i> Signal Strong
-                        {% endif %}
-                    </p>
+            <!-- Mini Dashboard Row -->
+            <div class="tech-row">
+                <div class="tech-item">
+                    <i class="fas fa-wifi"></i> <span>Strong</span>
                 </div>
-
-                <!-- Bottom: Actions -->
-                <div class="split-actions">
-                    <a href="{{ url_for('view_plantation', plantation_id=farm.id) }}" class="btn btn-primary btn-sm" style="flex: 1;">
-                        Monitor
-                    </a>
-                    <a href="{{ url_for('update_plantation', plantation_id=farm.id) }}" class="btn-icon">
-                        <i class="fas fa-cog"></i>
-                    </a>
+                <div class="tech-item">
+                    <i class="fas fa-cloud-sun"></i> <span>24°C</span>
                 </div>
+            </div>
+
+            <div class="action-row">
+                <a href="{{ url_for('view_plantation', plantation_id=farm.id) }}" class="btn-hybrid-primary">
+                    Open Feed
+                </a>
+                <a href="{{ url_for('update_plantation', plantation_id=farm.id) }}" class="btn-hybrid-icon">
+                    <i class="fas fa-cog"></i>
+                </a>
             </div>
         </div>
-        {% endfor %}
 
+        <!-- Colored Bottom Border for Status Scanning -->
+        <div class="status-line {{ 'line-error' if farm.has_error else 'line-success' }}"></div>
     </div>
+    {% endfor %}
+
 </div>
 
 <script>

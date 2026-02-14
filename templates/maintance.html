@@ -1,67 +1,96 @@
---- START OF FILE maintenance.html ---
 {% extends "base.html" %}
 {% block title %}Maintenance Hub - AgriScan AI{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="dashboard-header">
-        <div class="header-text">
-            <h1>Maintenance Operations</h1>
-            <p>Global Incident Tracking System</p>
+<div class="registry-container">
+    
+    <div class="page-header">
+        <div>
+            <h1>Maintenance Tickets</h1>
+            <p>Active incident tracking and hardware resolution.</p>
         </div>
-        <a href="{{ url_for('view_farms') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> New Report
-        </a>
+        <!-- You can link this to the "Add Log" modal in view_plantation if you want, or just keep it as a list view -->
+        <div style="display: flex; align-items: center; gap: 10px;">
+             <span class="meta-tag" style="background: #e0f2fe; color: #0369a1;">
+                {{ incidents|length }} Open Tickets
+             </span>
+        </div>
     </div>
 
-    <!-- Active Incidents Grid -->
-    <div class="cards-grid">
-        {% for ticket in incidents %}
-<div class="card 
-    {% if ticket.severity == 'High' %}
-        border-danger
-    {% elif ticket.category == 'Hardware' %}
-        border-info
-    {% else %}
-        border-success
-    {% endif %}">
-    
- 
-    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                <span style="font-size: 0.8rem; opacity: 0.7; font-weight: bold;">{{ ticket.entry_time }}</span>
-                <span class="status-badge" style="background: #eee; color: #333;">{{ ticket.category }}</span>
-            </div>
-            
-            <h3 style="margin-bottom: 5px;">{{ ticket.issue }}</h3>
-            <p style="color: var(--secondary); font-size: 0.9rem; margin-bottom: 15px;">
-                <i class="fas fa-map-marker-alt"></i> {{ ticket.farm_name }}
-            </p>
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Severity</th>
+                    <th>Location</th>
+                    <th>Issue Description</th>
+                    <th>Reported By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in incidents %}
+                <tr>
+                    <!-- Severity Badge -->
+                    <td>
+                        {% if ticket.severity == 'High' %}
+                            <span class="meta-tag" style="background: #fee2e2; color: #991b1b; border: 1px solid #fecaca;">
+                                <i class="fas fa-exclamation-circle"></i> HIGH
+                            </span>
+                        {% elif ticket.severity == 'Medium' %}
+                            <span class="meta-tag" style="background: #ffedd5; color: #9a3412;">
+                                <i class="fas fa-tools"></i> MED
+                            </span>
+                        {% else %}
+                            <span class="meta-tag" style="background: #f1f5f9; color: #475569;">
+                                <i class="fas fa-info-circle"></i> LOW
+                            </span>
+                        {% endif %}
+                    </td>
 
-            <div style="background: #f8f9fa; padding: 10px; border-radius: 8px; font-size: 0.85rem; color: #555; margin-bottom: 15px;">
-                "{{ ticket.remarks }}"
-            </div>
+                    <!-- Location -->
+                    <td>
+                        <div style="font-weight: 600; color: #1e293b;">{{ ticket.farm_name }}</div>
+                        <div style="font-size: 0.75rem; color: #64748b;">{{ ticket.entry_time }}</div>
+                    </td>
 
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <div class="user-avatar" style="width: 25px; height: 25px; font-size: 10px;">
-                        {{ ticket.reporter_name[0] }}
-                    </div>
-                    <span style="font-size: 0.8rem;">{{ ticket.reporter_name }}</span>
-                </div>
-                
-                <form action="{{ url_for('toggle_log_status', log_id=ticket.id) }}" method="POST">
-                    <button class="btn btn-sm btn-outline" style="color: var(--success); border-color: var(--success);">
-                        <i class="fas fa-check"></i> Resolve
-                    </button>
-                </form>
-            </div>
-        </div>
-        {% else %}
-        <div class="card" style="grid-column: 1/-1; text-align: center; padding: 50px;">
-            <h3>All Systems Operational</h3>
-            <p class="text-muted">No active incidents reported across any farms.</p>
-        </div>
-        {% endfor %}
+                    <!-- Issue (Decrypted) -->
+                    <td style="max-width: 300px;">
+                        <div style="font-weight: 500; color: #334155;">{{ ticket.issue }}</div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-top: 4px;">
+                            "{{ ticket.remarks }}"
+                        </div>
+                    </td>
+
+                    <!-- Reporter -->
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="user-avatar" style="width: 24px; height: 24px; font-size: 10px; background: #cbd5e1;">
+                                {{ ticket.reporter_name[0] }}
+                            </div>
+                            <span style="font-size: 0.9rem;">{{ ticket.reporter_name }}</span>
+                        </div>
+                    </td>
+
+                    <!-- Resolve Action -->
+                    <td>
+                        <form action="{{ url_for('toggle_log_status', log_id=ticket.id) }}" method="POST">
+                            <button class="btn-action btn-restore" type="submit" title="Mark as Resolved">
+                                <i class="fas fa-check"></i> Resolve
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 50px; color: #94a3b8;">
+                        <i class="fas fa-check-circle" style="font-size: 2rem; margin-bottom: 10px; color: #cbd5e1;"></i>
+                        <p>All systems operational. No active tickets.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endblock %}
