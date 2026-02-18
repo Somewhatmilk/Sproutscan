@@ -19,7 +19,7 @@
     --secondary: #4b3224;     /* Earth Brown */
     
     /* Functional */
-    --success: #27ae60;       
+    --success: #729c76;       
     --danger: #903741;        
         
 
@@ -149,7 +149,7 @@ ul { list-style: none; }
 .nav-brand { 
     font-size: 1.4rem; 
     font-weight: 700; 
-    color: var(--primary); /* Gold Logo */
+    color: #e7b075; /* Gold Logo */
     display: flex; gap: 10px; align-items: center; 
 }
 
@@ -160,6 +160,15 @@ ul { list-style: none; }
     font-size: 0.95rem;
 }
 .nav-links a:hover { color: var(--primary); opacity: 1; }
+
+.nav-links a.active {
+    color: var(--primary);
+}
+
+.nav-links a.active i {
+    color: var(--primary);
+}
+
 
 input:checked + .slider { background-color: #2ecc71; }
 input:checked + .slider .slider-knob { transform: translateX(14px); }
@@ -1534,3 +1543,45 @@ details[open] .arrow {
     background: #1e2b1e;
     border: 1px solid var(--primary);
 }
+
+/* =========================================
+   13. BULK DELETE BAR (Farms List)
+   ========================================= */
+#bulkBar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #1a2a1a;
+    border-top: 2px solid var(--danger);
+    padding: 14px 30px;
+    z-index: 8000;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    /* display toggled by JS */
+}
+
+/* =========================================
+   14. DARK GLASS TABLE (Recycle Bin)
+   ========================================= */
+.dark-table-wrap table { width: 100%; border-collapse: collapse; }
+.dark-table-wrap th {
+    background: rgba(255,255,255,0.06);
+    padding: 14px 20px;
+    text-align: left;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.dark-table-wrap td {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.8);
+    vertical-align: middle;
+}
+.dark-table-wrap tr:last-child td { border-bottom: none; }
+.dark-table-wrap tr:hover td { background: rgba(255,255,255,0.03); }

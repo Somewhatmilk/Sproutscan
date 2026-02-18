@@ -10,6 +10,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Modular CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/main.css') }}">
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -20,17 +21,40 @@
             <i class="fas fa-leaf"></i> SproutScan AI
         </a>
         <div class="nav-links">
-            <a href="{{ url_for('home') }}">Dashboard</a>
-            <a href="{{ url_for('view_farms') }}">Farm Registry</a>
-            <a href="{{ url_for('cropstage_view') }}"><i class="fas fa-seedling"></i> Crop Stage</a>
-            <a href="{{ url_for('pest_logs') }}">Pest Logs</a> 
-            {% if g.user.role == 'admin' %}
-             <a href="{{ url_for('create_report') }}" style="color: #ff9f43;">
-            <i class="fas fa-bug"></i> Report Error
+            <a href="{{ url_for('home') }}"
+               class="{% if request.endpoint == 'home' %}active{% endif %}">
+               Dashboard
             </a>
-            <a href="{{ url_for('manage_users') }}">Users</a>
+        
+            <a href="{{ url_for('view_farms') }}"
+               class="{% if request.endpoint == 'view_farms' %}active{% endif %}">
+               Farm Registry
+            </a>
+        
+            <a href="{{ url_for('cropstage_view') }}"
+               class="{% if request.endpoint == 'cropstage_view' %}active{% endif %}">
+               <i class="fas fa-seedling"></i> Crop Stage
+            </a>
+        
+            <a href="{{ url_for('pest_logs') }}"
+               class="{% if request.endpoint == 'pest_logs' %}active{% endif %}">
+               Pest Logs
+            </a>
+        
+            {% if g.user.role == 'admin' %}
+                <a href="{{ url_for('create_report') }}"
+                   class="{% if request.endpoint == 'create_report' %}active{% endif %}"
+                   style="color: #ff9f43;">
+                   <i class="fas fa-bug"></i> Report Error
+                </a>
+        
+                <a href="{{ url_for('manage_users') }}"
+                   class="{% if request.endpoint == 'manage_users' %}active{% endif %}">
+                   Users
+                </a>
             {% endif %}
         </div>
+        
 
         <!-- User Profile Dropdown -->
         <div class="user-menu" onclick="document.getElementById('profileDrop').classList.toggle('show')">

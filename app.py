@@ -528,8 +528,7 @@ def create_plantation():
     
     if request.method == 'POST':
         if form.validate():
-  
-            raw_date = form.date_created.data 
+            raw_date = form.date_created.data
             formatted_date = raw_date
             try:
                 date_obj = datetime.strptime(raw_date, '%Y-%m-%d')
@@ -539,11 +538,14 @@ def create_plantation():
             new_farm = Plantation(
                 number=form.number.data, 
                 name=form.name.data, 
-                date_created=formatted_date
+                date_created=formatted_date,
+                # NEW: Read GPS & area from form
+                latitude=request.form.get('latitude', type=float),
+                longitude=request.form.get('longitude', type=float),
+                area_hectares=request.form.get('area_hectares', type=float)
             )
             new_farm.save()
 
-   
             auto_folder = PestLogFolder(
                 number=form.number.data,
                 name=f"{form.name.data} - Logs"
@@ -554,8 +556,6 @@ def create_plantation():
             return redirect(url_for('home'))
             
     return render_template('update_plantation.html', plantation=None, form=form)
-
-
 
 @app.route('/farms')
 @login_required
@@ -686,8 +686,8 @@ def add_pest_log(plantation_id):
         flash("Incident Ticket Created", "success")
     else:
         flash("Error creating ticket: " + str(form.errors), "error")
-        
-    return redirect(url_for('view_plantation', plantation_id=plantation_id))
+
+    return redirect(url_for('view_farm_overview', farm_id=plantation_id))
 
 @app.route('/log/<int:log_id>/toggle', methods=['POST'])
 @login_required
@@ -709,8 +709,7 @@ def update_plantation(plantation_id):
     form = FarmForm(request.form)
 
     if request.method == 'POST' and form.validate():
-        # Same Date Conversion Logic
-        raw_date = form.date_created.data 
+        raw_date = form.date_created.data
         formatted_date = raw_date
         try:
             date_obj = datetime.strptime(raw_date, '%Y-%m-%d')
@@ -721,20 +720,22 @@ def update_plantation(plantation_id):
         plantation.number = form.number.data
         plantation.name = form.name.data
         plantation.date_created = formatted_date
+        # NEW: Update GPS & area
+        plantation.latitude = request.form.get('latitude', type=float)
+        plantation.longitude = request.form.get('longitude', type=float)
+        plantation.area_hectares = request.form.get('area_hectares', type=float)
         plantation.save()
         
         flash('Farm updated successfully!', 'success')
         return redirect(url_for('view_farms'))
     
-    # PRE-FILL LOGIC (IMPORTANT)
+    # PRE-FILL LOGIC
     if request.method == 'GET':
         form.number.data = plantation.number
         form.name.data = plantation.name
         
-      
         try:
             db_date = datetime.strptime(plantation.date_created, '%d/%m/%Y')
-            # We inject a temporary attribute 'date_created_iso' to use in the template
             plantation.date_created_iso = db_date.strftime('%Y-%m-%d')
         except:
             plantation.date_created_iso = ""
@@ -745,7 +746,13 @@ def update_plantation(plantation_id):
 @login_required
 def delete_plantation(plantation_id):
     p = Plantation.get_by_id(plantation_id)
-    if p: p.soft_delete()
+
+    if p:
+        p.soft_delete()
+        flash("Farm moved to Deleted Farms.", "success")
+    else:
+        flash("Farm not found.", "danger")
+
     return redirect(url_for("view_farms"))
 
 @app.route("/farms/deleted")
@@ -765,6 +772,16 @@ def restore_plantation(plantation_id):
     conn.commit()
     conn.close()
     flash("Farm recovered successfully!", "success")
+    return redirect(url_for("deleted_farms"))
+
+@app.route("/plantations/<int:plantation_id>/permanent-delete", methods=["POST"])
+@login_required
+def permanent_delete_plantation(plantation_id):
+    conn = db.get_connection()
+    conn.execute("DELETE FROM plantations WHERE id = ? AND is_deleted = 1", (plantation_id,))
+    conn.commit()
+    conn.close()
+    flash("Farm permanently deleted.", "success")
     return redirect(url_for("deleted_farms"))
 
 @app.route('/forgot-password', methods=['POST'])

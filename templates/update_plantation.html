@@ -1,79 +1,357 @@
 {% extends "base.html" %}
-{% block title %}Manage Farm{% endblock %}
+{% block title %}{% if plantation %}Edit Farm{% else %}Register Farm{% endif %} - AgriScan AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Hero Header */
+    .edit-hero {
+        padding: 2.5rem 4rem 2.5rem;
+        background:
+            linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
+            url('/static/images/farm3.jpg') center/cover no-repeat;
+        color: white;
+    }
+    .edit-hero .back-link {
+        color: var(--primary);
+        text-decoration: none;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 14px;
+        opacity: 0.85;
+        transition: opacity 0.2s;
+    }
+    .edit-hero .back-link:hover { opacity: 1; }
+    .edit-hero h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem;
+    }
+    .edit-hero p {
+        color: rgba(255,255,255,0.75);
+        margin: 0;
+        font-size: 1.1rem;
+    }
+
+    /* Form wrapper */
+    .edit-form-wrap {
+        max-width: 1350px;
+        margin: 2rem auto 3rem;
+        padding: 0 2rem;
+    }
+
+    /* Cream form card */
+    .edit-form-card {
+        background: rgba(255,251,244,0.94);
+        border-radius: 16px;
+        padding: 2.5rem 3rem;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .form-card-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid rgba(103,111,83,0.4);
+    }
+    .form-card-header h2 {
+        color: #1a3d2e;
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem;
+    }
+    .form-card-header p {
+        color: #64748b;
+        font-size: 0.95rem;
+        margin: 0;
+    }
+
+    /* Field labels */
+    .field-label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.625rem;
+        font-weight: 600;
+        color: #1a3d2e;
+        font-size: 0.95rem;
+    }
+
+    /* Inputs - light theme */
+    .edit-form-card .input-std {
+        background: white !important;
+        border: 2px solid #e2e8f0 !important;
+        color: #1a3d2e !important;
+        border-radius: 10px;
+        margin-bottom: 0;
+        padding: 0.875rem 1rem !important;
+        height: auto !important;
+        min-height: 50px;
+        box-sizing: border-box;
+    }
+    .edit-form-card .input-std:focus {
+        border-color: #d4a574 !important;
+        box-shadow: 0 0 0 3px rgba(212,165,116,0.1) !important;
+    }
+    .edit-form-card .input-std::placeholder { color: #94a3b8 !important; }
+
+    /* GPS section label */
+    .form-section-label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #1a3d2e;
+        margin: 1.8rem 0 1rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .form-section-label::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: rgba(103,111,83,0.3);
+    }
+
+    /* Two-column grid for GPS */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    /* Hint text */
+    .field-hint {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 0.375rem;
+    }
+
+    /* GPS info box */
+    .gps-info-box {
+        background: rgba(103,111,83,0.08);
+        border: 1px solid rgba(103,111,83,0.2);
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 0.8rem;
+        color: #4b5632;
+        margin-top: 1rem;
+    }
+
+    /* Error display */
+    .field-errors {
+        margin-top: 8px;
+        padding: 10px 12px;
+        background: rgba(144,55,65,0.12);
+        border: 1px solid rgba(144,55,65,0.35);
+        border-radius: 10px;
+        font-size: 0.83rem;
+        color: #903741;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    .field-errors ul { margin: 0; padding-left: 16px; list-style: none; }
+
+    /* Action buttons */
+    .edit-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 2px solid rgba(103,111,83,0.3);
+    }
+    .btn-save {
+        flex: 1;
+        padding: 0.875rem 1.5rem;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        background: #d4a574;
+        color: #1a3d2e;
+        box-shadow: 0 4px 12px rgba(212,165,116,0.3);
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-family: inherit;
+    }
+    .btn-save:hover {
+        background: #e0b585;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(212,165,116,0.4);
+    }
+    .btn-cancel-light {
+        flex: 1;
+        padding: 0.875rem 1.5rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 1rem;
+        background: #f1f5f9;
+        color: #475569;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    .btn-cancel-light:hover {
+        background: #e2e8f0;
+        border-color: #cbd5e1;
+        transform: translateY(-2px);
+    }
+
+    /* Serial row with auto-gen button */
+    .serial-row { display: flex; gap: 10px; align-items: stretch; }
+    .serial-row .input-std { flex: 1; }
+    .btn-autogen {
+        background: rgba(212,165,116,0.2);
+        color: #1a3d2e;
+        border: 1px solid rgba(212,165,116,0.4);
+        border-radius: 10px;
+        padding: 0 1.2rem;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+        transition: 0.2s;
+        flex-shrink: 0;
+    }
+    .btn-autogen:hover { background: rgba(212,165,116,0.4); }
+
+    .form-group { margin-bottom: 1.75rem; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="form-card" style="max-width: 500px;">
-        <div class="form-header">
-            <h2>{% if plantation %}Edit Farm{% else %}New Asset{% endif %}</h2>
+
+<!-- HERO HEADER -->
+<div class="edit-hero">
+    <a href="{{ url_for('view_farms') }}" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to Farm Registry
+    </a>
+    <h1>{% if plantation %}Edit Farm{% else %}Register New Farm{% endif %}</h1>
+    <p>{% if plantation %}Update asset details and GPS coordinates.{% else %}Fill in the details to register a new agricultural asset.{% endif %}</p>
+</div>
+
+<!-- FORM -->
+<div class="edit-form-wrap">
+    <div class="edit-form-card">
+
+        <div class="form-card-header">
+            <h2>{% if plantation %}Edit Farm Details{% else %}Register New Farm{% endif %}</h2>
+            <p>{% if plantation %}Update asset details and GPS coordinates.{% else %}Fill in the details to register a new agricultural asset.{% endif %}</p>
         </div>
 
-        <!-- Displays Specific Errors Here -->
         {% if form.errors %}
-            <div style="background: #fee2e2; color: #991b1b; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                <strong style="display:block; margin-bottom:5px;">Please correct the following:</strong>
-                <ul style="padding-left: 20px; margin: 0;">
-                    {% for field, errors in form.errors.items() %}
-                        {% for error in errors %}
-                            <li>{{ error }}</li>
-                        {% endfor %}
+        <div class="field-errors" style="margin-bottom:1.5rem;">
+            <i class="fas fa-exclamation-circle"></i>
+            <ul>
+                {% for field, errors in form.errors.items() %}
+                    {% for error in errors %}
+                        <li>{{ error }}</li>
                     {% endfor %}
-                </ul>
-            </div>
+                {% endfor %}
+            </ul>
+        </div>
         {% endif %}
-        
+
         <form method="POST">
-            <!-- 1. Smart Serial Number -->
-            <div style="margin-bottom: 20px;">
-                <label>Serial Number</label>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="serialInput" name="number" 
-                           value="{{ form.number.data or plantation.number or '' }}" 
-                           class="input-std" placeholder="AGRI-0000">
-                    
-                    <button type="button" onclick="generateSerial()" class="btn btn-secondary" style="white-space: nowrap;">
+            <!-- Serial Number -->
+            <div class="form-group">
+                <label class="field-label">Serial Number</label>
+                <div class="serial-row">
+                    <input type="text" id="serialInput" name="number"
+                           value="{{ form.number.data or (plantation.number if plantation else '') }}"
+                           class="input-std" placeholder="e.g. 01 or AGRI-1234">
+                    <button type="button" class="btn-autogen" onclick="generateSerial()">
                         <i class="fas fa-magic"></i> Auto-Gen
                     </button>
                 </div>
-                <small class="text-muted">Click Auto-Gen for a unique ID.</small>
+                <p class="field-hint">Unique identifier — any alphanumeric format</p>
+                {% if form.number.errors %}
+                <div class="field-errors"><i class="fas fa-exclamation-circle"></i><ul>{% for e in form.number.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+                {% endif %}
             </div>
 
-            <!-- 2. Farm Name -->
-            <div style="margin-bottom: 20px;">
-                <label>Farm Name</label>
-                <input type="text" name="name" 
-                       value="{{ form.name.data or plantation.name or '' }}" 
+            <!-- Farm Name -->
+            <div class="form-group">
+                <label class="field-label">Farm Name</label>
+                <input type="text" name="name"
+                       value="{{ form.name.data or (plantation.name if plantation else '') }}"
                        class="input-std" placeholder="e.g. West Wing Hydroponics">
+                {% if form.name.errors %}
+                <div class="field-errors"><i class="fas fa-exclamation-circle"></i><ul>{% for e in form.name.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+                {% endif %}
             </div>
-            
-            <!-- 3. Native Date Picker (HTML5) -->
-            <div style="margin-bottom: 30px;">
-                <label>Registration Date</label>
-                <input type="date" name="date_created" 
-                       value="{{ form.date_created.data or plantation.date_created_iso }}" 
+
+            <!-- Registration Date -->
+            <div class="form-group">
+                <label class="field-label">Registration Date</label>
+                <input type="date" name="date_created"
+                       value="{{ form.date_created.data or (plantation.date_created_iso if plantation else '') }}"
                        class="input-std">
+                {% if form.date_created.errors %}
+                <div class="field-errors"><i class="fas fa-exclamation-circle"></i><ul>{% for e in form.date_created.errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+                {% endif %}
             </div>
-            
-            <button type="submit" class="btn btn-primary" style="width: 100%;">
-                {% if plantation %}Update Asset{% else %}Register Farm{% endif %}
-            </button>
+
+            <!-- GPS Section -->
+            <p class="form-section-label"><i class="fas fa-map-marker-alt" style="color:#d4a574;"></i> GPS &amp; Location <span style="font-style:italic; font-weight:400; color:#64748b;">(Optional)</span></p>
+
+            <!-- Area -->
+            <div class="form-group">
+                <label class="field-label">Area (Hectares)</label>
+                <input type="number" step="0.01" min="0" name="area_hectares"
+                       value="{{ plantation.area_hectares if plantation else '' }}"
+                       class="input-std" placeholder="e.g. 5.5">
+            </div>
+
+            <!-- Lat / Lon -->
+            <div class="two-col form-group">
+                <div>
+                    <label class="field-label">Latitude</label>
+                    <input type="number" step="0.0001" name="latitude"
+                           value="{{ plantation.latitude if plantation else '' }}"
+                           class="input-std" placeholder="e.g. 1.3521">
+                </div>
+                <div>
+                    <label class="field-label">Longitude</label>
+                    <input type="number" step="0.0001" name="longitude"
+                           value="{{ plantation.longitude if plantation else '' }}"
+                           class="input-std" placeholder="e.g. 103.8198">
+                </div>
+            </div>
+
+            <div class="gps-info-box">
+                <i class="fas fa-info-circle" style="color:#d4a574; margin-right:6px;"></i>
+                GPS coordinates enable the weather widget and map view on the Farm Registry. Use Google Maps to find your farm's exact coordinates.
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="edit-actions">
+                <button type="submit" class="btn-save">
+                    <i class="fas fa-{% if plantation %}save{% else %}plus{% endif %}"></i>
+                    {% if plantation %}Update Farm{% else %}Register Farm{% endif %}
+                </button>
+                <a href="{{ url_for('view_farms') }}" class="btn-cancel-light">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
         </form>
+
     </div>
 </div>
 
 <script>
-    // The "Minimal/Quick" Logic
     function generateSerial() {
-        // Generates AGRI- + Random 4 digits
         const num = Math.floor(1000 + Math.random() * 9000);
-        document.getElementById('serialInput').value = "AGRI-" + num;
+        document.getElementById('serialInput').value = 'AGRI-' + num;
     }
-
-    // Auto-set Date to Today if empty
-    window.addEventListener('DOMContentLoaded', (event) => {
+    window.addEventListener('DOMContentLoaded', () => {
         const dateInput = document.querySelector('input[name="date_created"]');
-        if (!dateInput.value) {
-            dateInput.valueAsDate = new Date();
+        if (dateInput && !dateInput.value) {
+            dateInput.value = new Date().toISOString().split('T')[0];
         }
     });
 </script>

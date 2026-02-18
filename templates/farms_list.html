@@ -3,99 +3,472 @@
 {% block title %}My Farms - AgriScan AI{% endblock %}
 
 {% block extra_css %}
-<!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+    .farm-hero-header {
+        position: relative;
+        border-radius: 20px;
+        overflow: hidden;
+        padding: 50px 40px;
+        margin-bottom: 30px;
+        background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
+            url('/static/images/farm3.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        color: white;
+    }
+
+    .farm-hero-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 8px 0 6px;
+        letter-spacing: -0.5px;
+    }
+
+    .farm-hero-header p {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 1rem;
+        margin: 0;
+    }
+
+    .back-link {
+        color: var(--primary) !important;
+        text-decoration: none;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 10px;
+        opacity: 0.85;
+        transition: opacity 0.2s;
+    }
+
+    .back-link:hover {
+        opacity: 1;
+    }
+
+    /* Search */
+    .glass-search-container {
+        border-radius: 50px;
+        margin-bottom: 28px;
+        position: relative;
+        display: flex;
+        align-items: center;
+        
+    }
+
+    .glass-search-icon {
+        position: absolute;
+        right: 20px;
+        color: #4b3224;
+        font-size: 0.95rem;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .glass-search-input {
+        width: 100%;
+        border-radius: 12px !important;
+        padding: 20px 56px 20px 28px !important;
+        border: 2px solid transparent !important;
+        background: #e1ddd4 !important;
+        color: #4b3224 !important;
+        font-size: 1rem;
+        outline: none !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        transition: border-color 0.3s, box-shadow 0.3s;
+        box-sizing: border-box !important;
+        -webkit-appearance: none;
+        appearance: none;
+        font-family: inherit;
+    }
+
+    .glass-search-input:focus {
+        border-color: #d4a574 !important;
+        box-shadow: 0 6px 30px rgba(212, 165, 116, 0.2) !important;
+    }
+
+    .glass-search-input::placeholder {
+        color: #4b3224;
+    }
+
+    /* Grid */
+    .farms-grid-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 24px;
+    }
+
+    /* Cards */
+    .glass-farm-card {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+    }
+
+    .glass-farm-card:hover {
+        transform: translateY(-5px);
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(212, 165, 116, 0.6);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(212, 165, 116, 0.2);
+    }
+
+    .glass-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .serial-badge {
+        display: inline-block;
+        background: rgba(var(--primary-rgb, 180, 140, 60), 0.2);
+        color: var(--primary);
+        border: 1px solid rgba(var(--primary-rgb, 180, 140, 60), 0.35);
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+        display: block;
+        width: fit-content;
+    }
+
+    .glass-card-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: white;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .map-pin-btn {
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: var(--primary);
+        cursor: pointer;
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        transition: background 0.2s;
+        flex-shrink: 0;
+        margin-left: 10px;
+    }
+
+    .map-pin-btn:hover {
+        background: rgba(255, 255, 255, 0.14);
+    }
+
+    /* Meta row */
+    .farm-meta-row {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.85rem;
+        flex-wrap: wrap;
+    }
+
+    .farm-meta-row span {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .farm-meta-row i {
+        color: var(--primary);
+    }
+
+    /* Weather Box */
+    .glass-weather-box {
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+        min-height: 80px;
+        display: flex;
+        align-items: center;
+    }
+
+    .weather-content {
+        width: 100%;
+    }
+
+    .weather-main-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    .weather-icon {
+        font-size: 2.2rem;
+        line-height: 1;
+    }
+
+    .weather-temp {
+        font-size: 2rem;
+        font-weight: 800;
+        color: white;
+        line-height: 1;
+    }
+
+    .weather-desc {
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+
+    .weather-stats {
+        display: flex;
+        gap: 16px;
+        font-size: 0.82rem;
+        color: rgba(255, 255, 255, 0.55);
+    }
+
+    .weather-stats span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    /* Dates row */
+    .farm-dates-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .farm-date-block {
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 8px;
+        padding: 8px 12px;
+    }
+
+    .farm-date-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: rgba(255, 255, 255, 0.4);
+        margin-bottom: 2px;
+    }
+
+    .farm-date-value {
+        font-size: 0.88rem;
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: 500;
+    }
+
+    /* Action Buttons */
+    .glass-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+        margin-top: auto;
+    }
+
+    button.btn-glass {
+        line-height: inherit;
+        cursor: pointer;
+    }
+
+    .btn-glass {
+        padding: 9px 0;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        font-size: 0.83rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        transition: all 0.2s;
+    }
+
+    .btn-glass-view {
+        background: #7d8b5a;
+        color: #fffbf4;
+        border-color: #7d8b5a;
+    }
+
+    .btn-glass-view:hover {
+        background: #c2d58b;
+        color: #1a3d2e;
+        border-color: #c2d58b;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(125, 139, 90, 0.3);
+    }
+
+    .btn-glass-edit {
+        background: #8d7254;
+        color: #fffbf4;
+        border-color: #8d7254;
+    }
+
+    .btn-glass-edit:hover {
+        background: #e0b585;
+        color: #1a3d2e;
+        border-color: #e0b585;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(141, 114, 84, 0.3);
+    }
+
+    .btn-glass-del {
+        background: #903741;
+        color: #fffbf4;
+        border-color: #903741;
+    }
+
+    .btn-glass-del:hover {
+        background: #db4c5d;
+        color: #1a3d2e;
+        border-color: #db4c5d;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(144, 55, 65, 0.3);
+    }
+
+    /* Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-box {
+        background: rgba(40, 50, 40, 0.98);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 16px;
+        padding: 24px;
+    }
+
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
 
-    <!-- 1. HERO HEADER (Number 2 Design) -->
+    <!-- HERO HEADER -->
     <div class="farm-hero-header">
-        <a href="{{ url_for('home') }}" class="back-link" style="color: var(--primary); margin-bottom: 10px; display:inline-block;">
+        <a href="{{ url_for('home') }}" class="back-link">
             <i class="fas fa-arrow-left"></i> Back to Home
         </a>
         <h1>My Farms Registry</h1>
-        <p>Managing {{ plantations|length }} active agricultural assets</p>
-        
-        <div style="margin-top: 20px;">
-            <a href="{{ url_for('deleted_farms') }}" class="btn btn-sm" style="background: rgba(255,255,255,0.1); color: #ccc;">
+        <p>Managing {{ plantations|length }} active agricultural asset{{ 's' if plantations|length != 1 else '' }}</p>
+
+        <div style="margin-top: 22px; display:flex; gap:10px; flex-wrap:wrap;">
+            <a href="{{ url_for('deleted_farms') }}" class="btn"
+                style="background: #d4a574; color: #1a3d2e; border: none; font-weight: 600; transition: all 0.3s ease;"
+                onmouseover="this.style.background='#e0b585'; this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(212,165,116,0.4)';"
+                onmouseout="this.style.background='#d4a574'; this.style.transform=''; this.style.boxShadow='';">
                 <i class="fas fa-trash-restore"></i> Recover Deleted Farms
             </a>
-            <a href="{{ url_for('create_plantation') }}" class="btn btn-primary" style="margin-left: 10px;">
+            <a href="{{ url_for('create_plantation') }}" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Add New Farm
             </a>
         </div>
     </div>
 
-    <!-- 2. SEARCH BAR -->
+    <!-- SEARCH BAR -->
     <div class="glass-search-container">
-        <input type="text" id="farmSearch" class="glass-search-input" placeholder="Search by farm name or serial number...">
+        <i class="fas fa-search glass-search-icon"></i>
+        <input type="text" id="farmSearch" class="glass-search-input"
+            placeholder="Search by farm name or serial number...">
     </div>
 
-    <!-- 3. EMPTY STATE -->
-    <div id="noResults" style="display:none; text-align:center; padding: 40px; color: #aaa;">
-        <h2><i class="fas fa-search"></i> No farms found</h2>
-        <p>Try adjusting your search terms</p>
+    <!-- EMPTY STATE -->
+    <div id="noResults" style="display:none; text-align:center; padding: 60px; color: #aaa;">
+        <i class="fas fa-search" style="font-size:2rem; opacity:0.4; margin-bottom:12px; display:block;"></i>
+        <h3 style="margin:0 0 8px; color:#ccc;">No farms found</h3>
+        <p style="margin:0;">Try adjusting your search terms</p>
     </div>
 
-    <!-- 4. GRID LAYOUT (Glassmorphism Cards) -->
+    <!-- GRID -->
     <div class="farms-grid-container" id="farmsGrid">
         {% for plantation in plantations %}
-        <div class="glass-farm-card" data-serial="{{ plantation.number|lower }}" data-name="{{ plantation.name|lower }}">
-            
-            <!-- Restored Functionality: Bulk Checkbox -->
-            <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
-                <input type="checkbox" class="bulk-check" value="{{ plantation.id }}" style="transform: scale(1.3); cursor: pointer;">
-            </div>
+        <div class="glass-farm-card" data-serial="{{ plantation.number|lower }}"
+            data-name="{{ plantation.name|lower }}">
 
-            <!-- Header: Serial & Location Pin -->
+            <!-- Header -->
             <div class="glass-card-header">
                 <div>
                     <span class="serial-badge">#{{ plantation.number }}</span>
                     <h2 class="glass-card-title">{{ plantation.name }}</h2>
                 </div>
-                <button onclick="showMap({{ plantation.latitude or 0 }}, {{ plantation.longitude or 0 }}, '{{ plantation.name }}')" 
-                        style="background:transparent; border:none; color:var(--primary); cursor:pointer; font-size:1.2rem; margin-right: 30px;"
-                        title="View on Map">
+                <button
+                    onclick="showMap({{ plantation.latitude or 0 }}, {{ plantation.longitude or 0 }}, '{{ plantation.name }}')"
+                    class="map-pin-btn" title="View on Map">
                     <i class="fas fa-map-marked-alt"></i>
                 </button>
             </div>
 
-            <!-- Meta Info (Area & Coordinates) -->
-            <div style="display: flex; gap: 15px; margin-bottom: 15px; color: #ccc; font-size: 0.9rem;">
-                <span><i class="fas fa-ruler-combined" style="color: var(--primary);"></i> {{ plantation.area_hectares or 0 }} ha</span>
-                <span><i class="fas fa-location-arrow" style="color: var(--primary);"></i> {{ "%.4f"|format(plantation.latitude or 0) }}, {{ "%.4f"|format(plantation.longitude or 0) }}</span>
+            <!-- Meta Info -->
+            <div class="farm-meta-row">
+                <span><i class="fas fa-ruler-combined"></i> {{ plantation.area_hectares or 0 }} ha</span>
+                <span>
+                    <i class="fas fa-location-arrow"></i>
+                    {% if plantation.latitude is not none and plantation.longitude is not none %}
+                    {{ "%.4f"|format(plantation.latitude) }}, {{ "%.4f"|format(plantation.longitude) }}
+                    {% else %}
+                    No GPS Set
+                    {% endif %}
+                </span>
             </div>
 
-            <!-- Weather Widget (Async Load) -->
-            <div class="glass-weather-box" id="weather-{{ plantation.id }}" 
-                 data-lat="{{ plantation.latitude }}" data-lon="{{ plantation.longitude }}">
-                <div style="text-align:center; color: #aaa;">
+            <!-- Weather Widget -->
+            <div class="glass-weather-box" id="weather-{{ plantation.id }}"
+                data-lat="{{ plantation.latitude if plantation.latitude is not none else '' }}"
+                data-lon="{{ plantation.longitude if plantation.longitude is not none else '' }}">
+                <div style="text-align:center; color:#888; width:100%;">
                     <i class="fas fa-spinner fa-spin"></i> Loading weather...
                 </div>
             </div>
 
-            <!-- Dates (Fixed: Removed .strftime to prevent str object crash) -->
-            <div style="margin-bottom: 20px; font-size: 0.8rem; color: #888;">
-                <div>Created: {{ plantation.date_created or 'N/A' }}</div>
-                <div>Updated: {{ plantation.last_updated or '-' }}</div>
+            <!-- Dates -->
+            <div class="farm-dates-row">
+                <div class="farm-date-block">
+                    <div class="farm-date-label">Created</div>
+                    <div class="farm-date-value">{{ plantation.date_created or 'N/A' }}</div>
+                </div>
+                <div class="farm-date-block">
+                    <div class="farm-date-label">Last Updated</div>
+                    <div class="farm-date-value">{{ plantation.last_updated or '—' }}</div>
+                </div>
             </div>
 
-            <!-- Action Buttons (Fixed Endpoints to match your original backend) -->
+            <!-- Actions -->
             <div class="glass-actions">
-                <!-- Pointing to view_farm_overview as per your working original file -->
                 <a href="{{ url_for('view_farm_overview', farm_id=plantation.id) }}" class="btn-glass btn-glass-view">
                     <i class="fas fa-eye"></i> View
                 </a>
-                
-                <a href="{{ url_for('update_plantation', plantation_id=plantation.id) }}" class="btn-glass btn-glass-edit">
+                <a href="{{ url_for('update_plantation', plantation_id=plantation.id) }}"
+                    class="btn-glass btn-glass-edit">
                     <i class="fas fa-edit"></i> Edit
                 </a>
-                
-                <form method="POST" action="{{ url_for('delete_plantation', plantation_id=plantation.id) }}" onsubmit="return confirm('Are you sure you want to delete {{ plantation.name }}?');" style="width:100%;">
+                <form method="POST" action="{{ url_for('delete_plantation', plantation_id=plantation.id) }}"
+                    onsubmit="return confirm('Delete {{ plantation.name }}?');" style="margin:0;">
                     <button type="submit" class="btn-glass btn-glass-del" style="width:100%;">
-                        <i class="fas fa-trash"></i> Del
+                        <i class="fas fa-trash"></i> Delete
                     </button>
                 </form>
             </div>
@@ -108,12 +481,13 @@
 
 <!-- MAP MODAL -->
 <div id="mapModal" class="modal-overlay">
-    <div class="modal-box modal-glass-content" style="max-width: 800px; width: 90%; color: white;">
+    <div class="modal-box" style="max-width: 800px; width: 90%; color: white;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <h3 id="mapTitle" style="color: var(--primary); margin:0;">Farm Location</h3>
-            <button onclick="closeMap()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">&times;</button>
+            <h3 id="mapTitle" style="color: whitesmoke; margin:0;">Farm Location</h3>
+            <button onclick="closeMap()"
+                style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer; line-height:1;">&times;</button>
         </div>
-        <div id="map" style="height: 400px; border-radius: 12px; z-index: 1;"></div>
+        <div id="map" style="height: 420px; border-radius: 12px; z-index: 1;"></div>
     </div>
 </div>
 {% endblock %}
@@ -121,69 +495,134 @@
 {% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    /* 1. SEARCH FUNCTIONALITY */
-    document.getElementById("farmSearch").addEventListener("input", function(e) {
+    /* ---- SEARCH ---- */
+    document.getElementById("farmSearch").addEventListener("input", function (e) {
         const term = e.target.value.toLowerCase().trim();
-        const farmCards = document.querySelectorAll(".glass-farm-card");
-        let visibleCount = 0;
-        farmCards.forEach(card => {
-            const text = card.dataset.serial + card.dataset.name;
-            const match = text.includes(term);
+        const cards = document.querySelectorAll(".glass-farm-card");
+        let visible = 0;
+        cards.forEach(card => {
+            const match = (card.dataset.serial + card.dataset.name).includes(term);
             card.style.display = match ? "flex" : "none";
-            if(match) visibleCount++;
+            if (match) visible++;
         });
-        document.getElementById("noResults").style.display = visibleCount === 0 ? "block" : "none";
+        document.getElementById("noResults").style.display = visible === 0 ? "block" : "none";
     });
 
-    /* 2. WEATHER API */
+    /* ---- WEATHER CODE HELPERS ---- */
+    function getWeatherIcon(code) {
+        if (code === 0) return '\u2600\uFE0F';           // ☀️
+        if (code <= 2) return '\u26C5';                   // ⛅
+        if (code <= 3) return '\u2601\uFE0F';             // ☁️
+        if (code <= 48) return '\uD83C\uDF2B\uFE0F';      // 🌫️ fog
+        if (code <= 67) return '\uD83C\uDF27\uFE0F';      // 🌧️ rain
+        if (code <= 77) return '\uD83C\uDF28\uFE0F';      // 🌨️ snow
+        if (code <= 82) return '\uD83C\uDF26\uFE0F';      // 🌦️ showers
+        if (code <= 99) return '\u26C8\uFE0F';             // ⛈️ storm
+        return '\uD83C\uDF24\uFE0F';                       // 🌤️
+    }
+
+    function getWeatherDesc(code) {
+        if (code === 0) return 'Clear Sky';
+        if (code <= 2) return 'Partly Cloudy';
+        if (code <= 3) return 'Overcast';
+        if (code <= 9) return 'Fog';
+        if (code <= 19) return 'Drizzle';
+        if (code <= 29) return 'Rain';
+        if (code <= 39) return 'Snow';
+        if (code <= 49) return 'Freezing Fog';
+        if (code <= 59) return 'Drizzle';
+        if (code <= 67) return 'Rain';
+        if (code <= 77) return 'Snowfall';
+        if (code <= 82) return 'Rain Showers';
+        if (code <= 86) return 'Snow Showers';
+        if (code <= 99) return 'Thunderstorm';
+        return 'Unknown';
+    }
+
+    /* ---- WEATHER LOADER ---- */
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.glass-weather-box').forEach(async (box) => {
-            const {lat, lon} = box.dataset;
-            if(!lat || lat === "None" || lat == 0) {
-                box.innerHTML = '<div style="color:#aaa; text-align:center;">No GPS Coordinates</div>';
+            const lat = box.dataset.lat;
+            const lon = box.dataset.lon;
+
+            if (!lat || lat === '' || lat === 'None' || parseFloat(lat) === 0) {
+                box.innerHTML = '<div style="color:#888; text-align:center; width:100%;"><i class="fas fa-map-marker-slash" style="margin-right:6px;"></i>No GPS Coordinates Set</div>';
                 return;
             }
             try {
-                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`);
+                const res = await fetch(
+                    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+                    `&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`
+                );
+                if (!res.ok) throw new Error('API error');
                 const data = await res.json();
-                const current = data.current;
+                const c = data.current;
+                const icon = getWeatherIcon(c.weather_code);
+                const desc = getWeatherDesc(c.weather_code);
                 box.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:15px; margin-bottom:10px;">
-                        <div style="font-size: 2.2rem;">${getWeatherIcon(current.weather_code)}</div>
-                        <div style="font-size: 2rem; font-weight:800; color:white;">${Math.round(current.temperature_2m)}°C</div>
-                    </div>
-                    <div style="display:flex; gap:15px; font-size:0.85rem; color:rgba(255,255,255,0.7);">
-                        <span><i class="fas fa-tint"></i> ${current.relative_humidity_2m}%</span>
-                        <span><i class="fas fa-wind"></i> ${current.wind_speed_10m} km/h</span>
+                    <div class="weather-content">
+                        <div class="weather-main-row">
+                            <div class="weather-icon">${icon}</div>
+                            <div class="weather-temp">${Math.round(c.temperature_2m)}&deg;C</div>
+                        </div>
+                        <div class="weather-desc">${desc}</div>
+                        <div class="weather-stats">
+                            <span><i class="fas fa-tint"></i> ${c.relative_humidity_2m}% Humidity</span>
+                            <span><i class="fas fa-wind"></i> ${c.wind_speed_10m} km/h</span>
+                        </div>
                     </div>`;
-            } catch (err) { box.innerHTML = '<div style="color:#e74c3c; text-align:center;">Weather Unavailable</div>'; }
+            } catch (err) {
+                box.innerHTML = '<div style="color:#e74c3c; text-align:center; width:100%;"><i class="fas fa-exclamation-triangle" style="margin-right:6px;"></i>Weather unavailable</div>';
+            }
         });
     });
 
-    function getWeatherIcon(code) {
-        if (code === 0) return '☀️';
-        if (code < 3) return '⛅';
-        if (code < 70) return '🌧️';
-        return '🌤️';
-    }
-
-    /* 3. LEAFLET MAP */
+    /* ---- LEAFLET MAP ---- */
     let map = null, marker = null;
+
     function showMap(lat, lon, name) {
-        document.getElementById('mapModal').style.display = 'flex';
-        document.getElementById('mapTitle').textContent = name;
+        if (lat === 0 && lon === 0) {
+            alert('No GPS coordinates set for this farm. Edit the farm to add coordinates.');
+            return;
+        }
+
+        const modal = document.getElementById('mapModal');
+        modal.style.display = 'flex';
+        document.getElementById('mapTitle').textContent = '📍 ' + name;
+
         setTimeout(() => {
             if (!map) {
                 map = L.map('map').setView([lat, lon], 14);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-                marker = L.marker([lat, lon]).addTo(map);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(map);
+
+                marker = L.marker([lat, lon])
+                    .addTo(map)
+                    .bindPopup(`<span class="popup-title">${name}</span>`)
+                    .openPopup();
+
+                map.invalidateSize();
             } else {
                 map.setView([lat, lon], 14);
-                marker.setLatLng([lat, lon]);
+                marker.setLatLng([lat, lon])
+                    .setPopupContent(`<span class="popup-title">${name}</span>`)
+                    .openPopup();
+
                 map.invalidateSize();
             }
-        }, 150);
+        }, 200);
     }
-    function closeMap() { document.getElementById('mapModal').style.display = 'none'; }
+
+    function closeMap() {
+        document.getElementById('mapModal').style.display = 'none';
+    }
+
+    document.getElementById('mapModal').addEventListener('click', function (e) {
+        if (e.target === this) closeMap();
+    });
+
+
 </script>
 {% endblock %}

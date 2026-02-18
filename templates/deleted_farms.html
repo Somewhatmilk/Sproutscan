@@ -1,22 +1,180 @@
 {% extends "base.html" %}
-{% block title %}Deleted Farms - AgriScan AI{% endblock %}
+{% block title %}Recycle Bin - AgriScan AI{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Hero header */
+    .recycle-hero {
+        padding: 3rem;
+        background-image:
+            linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)),
+            url('/static/images/farm5.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        color: white;
+        margin-bottom: 3rem;
+    }
+    .recycle-hero .back-link {
+        color: var(--primary);
+        text-decoration: none;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 14px;
+        opacity: 0.85;
+        transition: opacity 0.2s;
+    }
+    .recycle-hero .back-link:hover { opacity: 1; }
+    .recycle-hero h1 {
+        font-size: 2.4rem;
+        font-weight: 700;
+        margin: 0 0 6px;
+    }
+    .recycle-hero p {
+        color: rgba(255,255,255,0.6);
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    /* Container */
+    .recycle-wrap {
+        max-width: 1400px;
+        margin: 2rem auto;
+        padding: 0 2rem 4rem;
+    }
+
+    /* Table card */
+    .dark-table-wrap {
+        background: rgba(255,251,244,0.05);
+        border-radius: 12px;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+    }
+
+    .dark-table-wrap table { width: 100%; border-collapse: collapse; table-layout: auto; }
+    .dark-table-wrap th {
+        background: rgba(255,251,244,0.94);
+        padding: 0.9rem 1.25rem;
+        text-align: left;
+        font-size: 0.88rem;
+        color: #322826;
+        font-weight: 600;
+        border-bottom: none;
+    }
+    .dark-table-wrap td {
+        padding: 0.9rem 1.25rem;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        color: #fffbf4;
+        font-size: 0.88rem;
+        vertical-align: middle;
+        background: transparent !important;
+    }
+    .dark-table-wrap tr:last-child td { border-bottom: none; }
+    .dark-table-wrap tr:hover { background: transparent !important; }
+    .dark-table-wrap tr:hover td { background: rgba(255,251,244,0.20) !important; }
+
+    /* Serial number */
+    .serial-struck {
+        font-family: monospace;
+        font-weight: 600;
+        color: #fffbf4;
+        font-size: 0.9rem;
+    }
+
+    /* Farm name */
+    .farm-name-cell {
+        font-weight: 600;
+        color: #fffbf4;
+    }
+
+    /* Date pills */
+    .date-pill {
+        display: inline-block;
+        background: rgba(255,255,255,0.07);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 0.8rem;
+        color: #aac0aa;
+    }
+    .date-pill.deleted {
+        background: rgba(231,76,60,0.15);
+        border-color: rgba(231,76,60,0.35);
+        color: #e88;
+    }
+
+    /* Action buttons */
+    .action-cell { display: flex; gap: 8px; justify-content: flex-end; }
+
+    .btn-restore-dark {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 0.7rem 1.4rem;
+        border: none;
+        background: #7d8b5a;
+        color: #fffbf4;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .btn-restore-dark:hover {
+        background: #c2d58b;
+        color: #1a3d2e;
+        transform: translateY(-2px);
+    }
+
+    .btn-perm-del {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 0.7rem 1.4rem;
+        border: none;
+        background: #903741;
+        color: #fffbf4;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all 0.3s ease;
+    }
+    .btn-perm-del:hover {
+        background: #db4c5d;
+        color:#1a3d2e;
+        transform: translateY(-2px);
+    }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: rgba(255,255,255,0.3);
+    }
+    .empty-state i { font-size: 2.5rem; margin-bottom: 14px; display: block; opacity: 0.4; }
+    .empty-state h3 { margin: 0 0 6px; color: rgba(255,255,255,0.5); font-size: 1.1rem; }
+    .empty-state p { margin: 0; font-size: 0.9rem; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="registry-container">
-    
-    <div class="page-header">
-        <div>
-            <h1>Recycle Bin</h1>
-            <p>Restore accidentally deleted assets</p>
-        </div>
-        <div style="display: flex; gap: 15px;">
-            <a href="{{ url_for('view_farms') }}" class="btn btn-outline" style="background: rgba(255,255,255,0.1);">
-                <i class="fas fa-arrow-left"></i> Back to Registry
-            </a>
-        </div>
-    </div>
 
-    <div class="table-card">
+<!-- HERO HEADER -->
+<div class="recycle-hero">
+    <a href="{{ url_for('view_farms') }}" class="back-link">
+        <i class="fas fa-arrow-left"></i> Back to Farm Registry
+    </a>
+    <h1>Deleted Farms</h1>
+    <p>Recover farms you deleted earlier</p>
+</div>
+
+<div class="recycle-wrap">
+    <div class="dark-table-wrap">
+        {% if plantations %}
         <table>
             <thead>
                 <tr>
@@ -24,46 +182,44 @@
                     <th>Farm Name</th>
                     <th>Date Created</th>
                     <th>Date Deleted</th>
-                    <th style="text-align: right;">Actions</th>
+                    <th style="text-align:right;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for p in plantations %}
                 <tr>
-                    <td style="font-family: monospace; font-weight: 600; color: #7f8c8d; text-decoration: line-through;">
-                        {{ p.number }}
-                    </td>
-                    
-                    <td style="opacity: 0.7;">
-                        <div style="font-weight: 600;">{{ p.name }}</div>
-                    </td>
-                    
-                    <td style="color: #999;">{{ p.date_created }}</td>
-                    
+                    <td><span class="serial-struck">{{ p.number }}</span></td>
+                    <td><span class="farm-name-cell">{{ p.name }}</span></td>
+                    <td>{{ p.date_created or '-' }}</td>
+                    <td>{{ p.date_deleted or '-' }}</td>
                     <td>
-                        <span class="meta-tag deleted">
-                             {{ p.date_deleted or "Unknown" }}
-                        </span>
-                    </td>
-                    
-                    <td style="text-align: right;">
-                        <form method="POST" action="{{ url_for('restore_plantation', plantation_id=p.id) }}">
-                            <button class="btn-action btn-restore" type="submit">
-                                <i class="fas fa-undo"></i> Restore
-                            </button>
-                        </form>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="5" style="text-align: center; padding: 50px; color: #aaa;">
-                        <i class="fas fa-trash-alt" style="font-size: 2rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
-                        No deleted farms found.
+                        <div class="action-cell">
+                            <form method="POST" action="{{ url_for('restore_plantation', plantation_id=p.id) }}" style="margin:0;">
+                                <button type="submit" class="btn-restore-dark">
+                                    <i class="fas fa-undo"></i> Restore
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('permanent_delete_plantation', plantation_id=p.id) }}"
+                                  onsubmit="return confirm('Permanently delete {{ p.name }}? This cannot be undone!');"
+                                  style="margin:0;">
+                                <button type="submit" class="btn-perm-del">
+                                    <i class="fas fa-times"></i> Delete Forever
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-check-circle"></i>
+            <h3>Recycle Bin is Empty</h3>
+            <p>No deleted farms found — everything looks clean.</p>
+        </div>
+        {% endif %}
     </div>
 </div>
+
 {% endblock %}

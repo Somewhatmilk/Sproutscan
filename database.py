@@ -28,7 +28,10 @@ class Database:
                 last_updated TEXT, 
                 is_deleted INTEGER DEFAULT 0,
                 date_deleted TEXT,
-                global_crop_id INTEGER
+                global_crop_id INTEGER,
+                latitude REAL,
+                longitude REAL,
+                area_hectares REAL
             )
         ''')
 
@@ -38,6 +41,14 @@ class Database:
             print("MIGRATION SUCCESS: Added 'last_updated' column.")
         except sqlite3.OperationalError:
             pass  
+
+        # GPS & Area columns
+        for col, coltype in [('latitude', 'REAL'), ('longitude', 'REAL'), ('area_hectares', 'REAL')]:
+            try:
+                cursor.execute(f"ALTER TABLE plantations ADD COLUMN {col} {coltype}")
+                print(f"MIGRATION SUCCESS: Added '{col}' column.")
+            except sqlite3.OperationalError:
+                pass
 
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS farm_zones (
@@ -349,13 +360,13 @@ class PestLogFolder:
         return [PestLogFolder(**dict(row)) for row in rows]
 
     @staticmethod
-    def get_by_id(zid):
+    def get_by_id(fid):
         db = Database()
         conn = db.get_connection()
-        row = conn.execute("SELECT * FROM farm_zones WHERE id=?", (zid,)).fetchone()
+        row = conn.execute("SELECT * FROM pest_log_folders WHERE id=?", (fid,)).fetchone()
         conn.close()
-        return FarmZone(**dict(row)) if row else None
-    
+        return PestLogFolder(**dict(row)) if row else None
+
     @staticmethod
     def delete(fid):
         db = Database()
@@ -450,7 +461,10 @@ class Plantation:
         self.last_updated = kwargs.get('last_updated')
         self.is_deleted = kwargs.get('is_deleted', 0)
         self.date_deleted = kwargs.get('date_deleted')
-        self.global_crop_id = kwargs.get('global_crop_id') 
+        self.global_crop_id = kwargs.get('global_crop_id')
+        self.latitude = kwargs.get('latitude')
+        self.longitude = kwargs.get('longitude')
+        self.area_hectares = kwargs.get('area_hectares')
         # Virtual Property for status
         self._status = None 
 
@@ -528,13 +542,13 @@ class Plantation:
         if self.id:
             current_time = datetime.now().strftime("%d/%m/%Y %H:%M")
             conn.execute(
-                'UPDATE plantations SET number=?, name=?, date_created=?, last_updated=? WHERE id=?',
-                (self.number, self.name, self.date_created, current_time, self.id)
+                'UPDATE plantations SET number=?, name=?, date_created=?, last_updated=?, latitude=?, longitude=?, area_hectares=? WHERE id=?',
+                (self.number, self.name, self.date_created, current_time, self.latitude, self.longitude, self.area_hectares, self.id)
             )
         else:
             conn.execute(
-                'INSERT INTO plantations (number, name, date_created) VALUES (?, ?, ?)',
-                (self.number, self.name, self.date_created)
+                'INSERT INTO plantations (number, name, date_created, latitude, longitude, area_hectares) VALUES (?, ?, ?, ?, ?, ?)',
+                (self.number, self.name, self.date_created, self.latitude, self.longitude, self.area_hectares)
             )
         conn.commit()
         conn.close()

@@ -16,12 +16,11 @@ class LoginForm(Form):
 class FarmForm(Form):
     number = StringField('Serial Number', [
         validators.DataRequired(),
-        # We keep the Serial regex, but we will add a button to auto-fill it correctly
-        validators.Regexp(r'^[A-Z]{2,4}-\d{3,6}$', message="Format: XXXX-000 (e.g., AGRI-105)")
+        validators.Regexp(r'^[A-Za-z0-9][A-Za-z0-9\-]{0,19}$', message="Serial must be 1-20 alphanumeric characters (e.g., 01 or AGRI-1234)")
     ])
     name = StringField('Farm Name', [
         validators.DataRequired(),
-        validators.Length(min=3, max=30)
+        validators.Length(min=3, max=100)
     ])
  
     date_created = StringField('Date Created', [validators.DataRequired()])
