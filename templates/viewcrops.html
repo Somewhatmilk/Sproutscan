@@ -18,42 +18,48 @@
         {% for c in crops %}
         <details class="crop-item" data-crop="{{ c['crop_name'] }}" data-id="{{ c['crop_id'] or c['id'] }}">
             <summary class="crop-header">
-                <span class="arrow"><i class="fas fa-chevron-down"></i></span>
-                <span class="crop-title">{{ c['crop_name'] }}</span>
-                <button type="button" class="delete" data-id="{{ c['id'] or c['crop_id'] }}">
-                    <i class="fas fa-trash"></i> DELETE
-                </button>
+              <span class="arrow"><i class="fas fa-chevron-down"></i></span>
+              <span class="crop-title">{{ c['crop_name'] }}</span>
+              <button type="button" class="delete" data-id="{{ c['id'] or c['crop_id'] }}">
+                <i class="fas fa-trash"></i> DELETE
+              </button>
             </summary>
-
+          
             <div class="crop-panel">
-                <!-- Dropdown -->
-                {% set st = (c['stage_name'] or '') %}
-                <label style="color:#aaa; font-size:0.8rem; font-weight:bold;">UPDATE STAGE:</label>
-                <select class="stage-select">
-                    <option value="" {% if not st %}selected{% endif %}>-- Select Stage --</option>
-                    <option value="Seedling" {% if st=='Seedling' %}selected{% endif %}>Seedling</option>
-                    <option value="Vegetative" {% if st=='Vegetative' %}selected{% endif %}>Vegetative</option>
-                    <option value="Flowering" {% if st=='Flowering' %}selected{% endif %}>Flowering</option>
-                    <option value="Fruiting" {% if st=='Fruiting' %}selected{% endif %}>Fruiting</option>
-                    <option value="Harvest Ready" {% if st=='Harvest Ready' %}selected{% endif %}>Harvest Ready</option>
-                </select>
-
-                <!-- Current Info -->
-                <h3>CURRENT STAGE: <span class="stage">{{ c['stage_name'] if c['stage_name'] else 'Not Set' }}</span></h3>
-                <p>GROWTH PROGRESS: <strong class="progress-text">0%</strong></p>
-
-                <div class="progress-bar">
-                    <div class="progress-fill"></div>
+              <!-- Dropdown -->
+              {% set st = (c['stage_name'] or '') %}
+              <label style="color:#aaa; font-size:0.8rem; font-weight:bold;">UPDATE STAGE:</label>
+              <select class="stage-select">
+                <option value="" {% if not st %}selected{% endif %}>-- Select Stage --</option>
+                <option value="Seedling" {% if st=='Seedling' %}selected{% endif %}>Seedling</option>
+                <option value="Vegetative" {% if st=='Vegetative' %}selected{% endif %}>Vegetative</option>
+                <option value="Flowering" {% if st=='Flowering' %}selected{% endif %}>Flowering</option>
+                <option value="Fruiting" {% if st=='Fruiting' %}selected{% endif %}>Fruiting</option>
+                <option value="Harvest Ready" {% if st=='Harvest Ready' %}selected{% endif %}>Harvest Ready</option>
+              </select>
+          
+              <!-- Current Info -->
+              <h3>CURRENT STAGE: <span class="stage">{{ c['stage_name'] if c['stage_name'] else 'Not Set' }}</span></h3>
+              <p>GROWTH PROGRESS: <strong class="progress-text">0%</strong></p>
+          
+              <div class="progress-bar">
+                <div class="progress-fill"></div>
+              </div>
+          
+              <div class="status-box">
+                <div class="status js-status">{{ c['status'] if c['status'] else 'UNKNOWN' }}</div>
+          
+                <div class="confidence">
+                  AI CONF: <span class="js-conf">{{ c['ai_confidence'] if c['ai_confidence'] else '-' }}</span>%
                 </div>
-
-                <div class="status-box">
-                    <div class="status js-status">{{ c['status'] if c['status'] else 'UNKNOWN' }}</div>
-                    <div class="confidence">
-                        AI CONF: <span class="js-conf">{{ c['ai_confidence'] if c['ai_confidence'] else '-' }}</span>%
-                    </div>
+          
+                <div class="growth">
+                  GROWTH: <span class="js-growth">-</span>
                 </div>
+              </div>
             </div>
-        </details>
+          </details>
+          
         {% else %}
         <div style="text-align:center; padding:50px; color:rgba(255,255,255,0.5);">
             <h3>No crops found</h3>
@@ -64,114 +70,123 @@
 </div>
 
 <script>
-    
     document.addEventListener("click", (e) => {
       const btn = e.target.closest(".delete");
       if (!btn) return;
       e.preventDefault(); e.stopPropagation();
       if (!confirm("Delete this crop?")) return;
-      
+  
       fetch(`/api/crops/${btn.dataset.id}`, { method: "DELETE" })
-        .then(r => { 
-            if(r.ok) location.reload(); 
-            else alert("Error deleting");
+        .then(r => {
+          if (r.ok) location.reload();
+          else alert("Error deleting");
         });
     });
-
+  
     // 2. PROGRESS BAR LOGIC (Manual Stage Setting)
     const STAGE_TO_PERCENT = {
-      "Seedling": 20, "Vegetative": 50, "Flowering": 75, 
+      "Seedling": 20, "Vegetative": 50, "Flowering": 75,
       "Fruiting": 90, "Harvest Ready": 100
     };
-
+  
     function updateProgressBar(panel, stageName) {
-        const percent = STAGE_TO_PERCENT[stageName] || 0;
-        const bar = panel.querySelector(".progress-fill");
-        const text = panel.querySelector(".progress-text");
-        
-        if (bar) bar.style.width = percent + "%";
-        if (text) text.textContent = percent + "%";
-        
-        // Update Title text
-        const stageLabel = panel.querySelector(".stage");
-        if(stageLabel) stageLabel.textContent = stageName || "NOT SET";
+      const percent = STAGE_TO_PERCENT[stageName] || 0;
+      const bar = panel.querySelector(".progress-fill");
+      const text = panel.querySelector(".progress-text");
+  
+      if (bar) bar.style.width = percent + "%";
+      if (text) text.textContent = percent + "%";
+  
+      const stageLabel = panel.querySelector(".stage");
+      if (stageLabel) stageLabel.textContent = stageName || "NOT SET";
     }
-
-    // Initialize bars on load
+  
     document.querySelectorAll(".crop-panel").forEach(panel => {
-        const sel = panel.querySelector(".stage-select");
-        if(sel) updateProgressBar(panel, sel.value);
+      const sel = panel.querySelector(".stage-select");
+      if (sel) updateProgressBar(panel, sel.value);
     });
-
-    // Handle Dropdown Change
+  
     document.addEventListener("change", async function (e) {
       if (!e.target.classList.contains("stage-select")) return;
-
+  
       const panel = e.target.closest(".crop-panel");
       const item = e.target.closest(".crop-item");
       const stageName = e.target.value;
-      
-      // 1. Optimistic UI Update
+  
       updateProgressBar(panel, stageName);
-
-      // 2. Send to Backend
+  
       const cropId = item.dataset.id;
       await fetch(`/api/crops/${cropId}/stage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stage_name: stageName })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage_name: stageName })
       });
     });
+  
+    // 3. REAL-TIME AI CONNECTION (Live)
+let inFlight = false;
 
-    // 3. REAL-TIME AI CONNECTION (The "Live" Part)
-    function normalizeName(s) { return (s || "").trim().toLowerCase(); }
+async function pollAICrops() {
+  if (inFlight) return;
+  inFlight = true;
 
-    async function pollAICrops() {
-      try {
-        // Fetches the latest logs from app.py
-        const res = await fetch("/api/log_map");
-        const json = await res.json();
-        
-        if (!json.success || !json.data) return;
-        const map = json.data;
+  try {
+    const items = document.querySelectorAll(".crop-item");
 
-        // Loop through every crop card in the HTML
-        document.querySelectorAll(".crop-item").forEach(item => {
-            const cropName = normalizeName(item.dataset.crop);
-            
-            // If we have AI data for this crop name
-            if (map[cropName]) {
-                const data = map[cropName];
-                
-                // Update Confidence
-                const confEl = item.querySelector(".js-conf");
-                if (confEl) confEl.innerText = data.confidence;
+    await Promise.all([...items].map(async (item) => {
+      const cropRaw = item.dataset.crop;
+      if (!cropRaw) return;
 
-                // Update Growth/Health Status
-                const growthEl = item.querySelector(".js-growth");
-                if (growthEl) growthEl.innerText = data.growth_status.toUpperCase();
+      const url = `/api/live-data?crop=${encodeURIComponent(cropRaw)}&base_override=95&thresh_override=70`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) return;
 
-                // Update Status Pill (The first pill)
-                const statusEl = item.querySelector(".js-status");
-                if (statusEl) {
-                    statusEl.innerText = data.ai_status.toUpperCase();
-                    
-                    // DYNAMIC COLORING
-                    if(data.ai_status.toLowerCase().includes("check") || data.confidence < 70) {
-                        statusEl.style.backgroundColor = "rgba(231, 76, 60, 0.4)"; // Red tint
-                        statusEl.style.borderColor = "#e74c3c";
-                    } else {
-                        statusEl.style.backgroundColor = "rgba(46, 204, 113, 0.4)"; // Green tint
-                        statusEl.style.borderColor = "#2ecc71";
-                    }
-                }
-            }
-        });
-      } catch (e) { console.log("Polling error", e); }
-    }
+      const data = await res.json();
 
-    // Run immediately and then every 2 seconds
-    pollAICrops();
-    setInterval(pollAICrops, 2000);
-</script>
+      const conf = Number(data.confidence ?? 0) || 0;
+      const statusRaw = String(data.status ?? "");
+      const color = String(data.color ?? "");
+
+      // Confidence
+      const confEl = item.querySelector(".js-conf");
+      if (confEl) confEl.innerText = conf;
+
+      // Status pill text + color
+      const statusEl = item.querySelector(".js-status");
+      if (statusEl) {
+        statusEl.innerText = statusRaw.toUpperCase();
+
+        // Use backend color if provided
+        if (color) {
+          statusEl.style.borderColor = color;
+          // light tint
+          statusEl.style.backgroundColor = color === "#2ecc71"
+            ? "rgba(46, 204, 113, 0.4)"
+            : "rgba(231, 76, 60, 0.4)";
+        } else {
+          // fallback rule
+          const needsCheck = statusRaw.toLowerCase().includes("scan") || conf < 70;
+          statusEl.style.backgroundColor = needsCheck ? "rgba(231, 76, 60, 0.4)" : "rgba(46, 204, 113, 0.4)";
+          statusEl.style.borderColor = needsCheck ? "#e74c3c" : "#2ecc71";
+        }
+      }
+
+      // Growth label (you added .js-growth) — map from confidence
+      const growthEl = item.querySelector(".js-growth");
+      if (growthEl) {
+        growthEl.innerText = (conf >= 90 ? "NORMAL" : "NEEDS CHECK");
+      }
+    }));
+
+  } catch (e) {
+    console.log("Polling error", e);
+  } finally {
+    inFlight = false;
+  }
+}
+
+pollAICrops();
+setInterval(pollAICrops, 2000);
+  </script>
+  
 {% endblock %}

@@ -900,6 +900,7 @@ def delete_crop(crop_id):
     return jsonify({"message": "Crop deleted"}), 200
 
 @app.get("/crop_view")
+@login_required
 def view_list():
     with sqlite3.connect('plantations.db') as conn:
         conn.row_factory = sqlite3.Row
