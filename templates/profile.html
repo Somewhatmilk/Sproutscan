@@ -2,131 +2,89 @@
 {% block title %}Account Settings{% endblock %}
 
 {% block content %}
-<div class="settings-container">
+<div class="container" style="max-width: 900px; margin-top: 40px;">
     
-    <!-- 1. Modern Header Card -->
-    <div class="profile-header-card">
-        <div class="profile-avatar-large" style="background: {{ user.avatar_color }};">
+    <!-- Header Section -->
+    <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 30px; color: var(--text-main);">
+        <div style="width: 80px; height: 80px; background: {{ user.avatar_color }}; border-radius: 50%; display: grid; place-items: center; font-size: 2rem; font-weight: bold; color: white; border: 4px solid rgba(255,255,255,0.2);">
             {{ user.name[0] }}
         </div>
         <div>
-            <h1 style="margin: 0; font-size: 1.8rem; font-weight: 700;">{{ user.name }}</h1>
-            <div style="display: flex; gap: 15px; margin-top: 8px; font-size: 0.9rem; opacity: 0.9;">
-                <span><i class="fas fa-envelope"></i> {{ user.email }}</span>
-                <span>|</span>
-                <span style="background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px;">
-                    {{ user.role|upper }}
-                </span>
-            </div>
+            <h1 style="margin: 0; font-size: 2rem;">{{ user.name }}</h1>
+            <div style="opacity: 0.8; font-family: monospace;">{{ user.email }} | {{ user.role|upper }}</div>
         </div>
     </div>
 
-    <!-- 2. Settings Panel -->
-    <div class="settings-panel">
+    <!-- Settings Card -->
+    <div class="form-card" style="max-width: 100%; background: #fdfbf7; padding: 0; overflow: hidden;">
         
-        <!-- A. Read-Only Info -->
-        <div class="setting-item">
-            <div class="setting-icon-box">
-                <i class="fas fa-at"></i>
-            </div>
-            <div class="setting-text">
-                <h4>Username</h4>
-                <p>@{{ user.username }} &bull; System ID: #{{ user.id }}</p>
-            </div>
-            <div style="color: var(--text-muted); font-size: 0.85rem;">
-                <i class="fas fa-lock"></i> Managed by Admin
-            </div>
-        </div>
-
-        <!-- B. Password Change -->
-        <div class="setting-item clickable" onclick="toggleDrawer('passwordDrawer', this)">
-            <div class="setting-icon-box">
-                <i class="fas fa-key"></i>
-            </div>
-            <div class="setting-text">
-                <h4>Security & Password</h4>
-                <p>Last updated recently</p>
-            </div>
-            <i class="fas fa-chevron-right text-muted transition-icon"></i>
-        </div>
-
-        <!-- Hidden Drawer: Password -->
-        <div id="passwordDrawer" class="setting-drawer">
-            <h5 style="margin-bottom: 15px; color: var(--text-main);">Update Credentials</h5>
-            <form method="POST" style="display: flex; gap: 10px; align-items: flex-start;">
-                <div style="flex: 1;">
-                    <input type="password" name="new_password" class="input-std" placeholder="New secure password" required>
-                    <small style="color: var(--text-muted); display: block; margin-top: 5px;">Must be at least 6 characters.</small>
+        <!-- Section 1: User Info -->
+        <div style="padding: 30px; border-bottom: 1px solid #eee;">
+            <h3 style="color: var(--secondary); margin-bottom: 15px;"><i class="fas fa-id-card"></i> Profile Details</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: bold; color: #666;">Username</label>
+                    <input type="text" value="@{{ user.username }}" class="input-std" readonly style="background: #eee; cursor: not-allowed;">
                 </div>
-                <button class="btn btn-primary">Update Password</button>
+                <div>
+                    <label style="font-size: 0.8rem; font-weight: bold; color: #666;">System ID</label>
+                    <input type="text" value="#{{ user.id }}" class="input-std" readonly style="background: #eee; cursor: not-allowed;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Password (Accordion Style) -->
+        <div style="padding: 30px; border-bottom: 1px solid #eee;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="color: var(--secondary); margin: 0;"><i class="fas fa-key"></i> Security & Password</h3>
+                <span class="meta-tag">Last updated recently</span>
+            </div>
+            
+            <form method="POST">
+                <label style="font-size: 0.8rem; font-weight: bold; color: #666;">Update Password</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="password" name="new_password" class="input-std" placeholder="New secure password" style="margin-bottom: 0;">
+                    <button class="btn btn-primary" style="white-space: nowrap;">Update</button>
+                </div>
+                <small class="text-muted">Must be at least 6 characters long.</small>
             </form>
         </div>
 
-        <!-- C. MFA Settings -->
-        <div class="setting-item clickable" onclick="toggleDrawer('mfaDrawer', this)">
-            <div class="setting-icon-box" style="{{ 'color: var(--accent-green); background: #dcfce7;' if user.mfa_secret else '' }}">
-                <i class="fas fa-shield-alt"></i>
-            </div>
-            <div class="setting-text">
-                <h4>Two-Factor Authentication</h4>
-                {% if user.mfa_secret %}
-                    <p style="color: var(--accent-green);">Enabled & Active</p>
-                {% else %}
-                    <p>Add an extra layer of security</p>
-                {% endif %}
-            </div>
-            <i class="fas fa-chevron-right text-muted transition-icon"></i>
-        </div>
+        <!-- Section 3: MFA -->
+        <div style="padding: 30px; background: {% if user.mfa_secret %}#f0fdf4{% else %}#fff{% endif %};">
+            <h3 style="color: var(--secondary); margin-bottom: 15px;"><i class="fas fa-shield-alt"></i> Two-Factor Authentication</h3>
+            
+            {% if user.mfa_secret %}
+                <div style="display: flex; align-items: center; gap: 15px; color: #166534;">
+                    <i class="fas fa-check-circle fa-2x"></i>
+                    <div>
+                        <div style="font-weight: bold;">MFA is Active</div>
+                        <div style="font-size: 0.9rem;">Your account is secured.</div>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="startMFA()" style="margin-left: auto;">Re-configure</button>
+                </div>
+            {% else %}
+                <p class="text-muted" style="margin-bottom: 15px;">Protect your account using Google Authenticator.</p>
+                <button class="btn btn-primary" id="btnSetupMFA" onclick="startMFA()">Enable MFA</button>
+            {% endif %}
 
-        <!-- Hidden Drawer: MFA -->
-        <div id="mfaDrawer" class="setting-drawer">
-            <div style="display: flex; gap: 20px; align-items: flex-start;">
-                
-                {% if not user.mfa_secret %}
-                <!-- Setup Mode -->
-                <div style="flex: 1;">
-                    <p style="margin-bottom: 15px; color: var(--text-muted);">
-                        Protect your account using Google Authenticator or Authy.
-                    </p>
-                    <button class="btn btn-primary" onclick="startMFA()" id="btnSetupMFA">
-                        Start Configuration
-                    </button>
-
-                    <!-- Hidden until clicked -->
-                    <div id="mfaWizard" style="display: none; margin-top: 20px; background: var(--bg-subtle); padding: 20px; border-radius: 8px;">
-                        <div style="display: flex; gap: 20px;">
-                            <div style="background: white; padding: 10px; border-radius: 8px; box-shadow: var(--shadow-card);">
-                                <img id="qrImage" src="" style="width: 120px; height: 120px; display: block;">
-                            </div>
-                            <div style="flex: 1;">
-                                <strong style="display: block; margin-bottom: 5px;">1. Scan QR Code</strong>
-                                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">Open your authenticator app and scan this image.</p>
-                                
-                                <strong style="display: block; margin-bottom: 5px;">2. Verify Token</strong>
-                                <div style="display: flex; gap: 10px;">
-                                    <input type="text" id="verifyInput" class="input-std" placeholder="123 456" style="width: 140px; letter-spacing: 2px; text-align: center;">
-                                    <button onclick="confirmMFA()" class="btn btn-primary">Verify</button>
-                                </div>
-                            </div>
+            <!-- MFA Wizard (Hidden by default) -->
+            <div id="mfaWizard" style="display: none; margin-top: 20px; background: white; padding: 20px; border-radius: 8px; border: 1px solid #ddd;">
+                <div style="display: flex; gap: 20px;">
+                    <div style="background: white; padding: 5px; border: 1px solid #eee;">
+                        <img id="qrImage" src="" style="width: 120px; height: 120px; display: block;">
+                    </div>
+                    <div style="flex: 1;">
+                        <strong style="display: block; margin-bottom: 5px; color: #333;">1. Scan QR Code</strong>
+                        <p style="font-size: 0.85rem; color: #666; margin-bottom: 15px;">Use your authenticator app.</p>
+                        
+                        <strong style="display: block; margin-bottom: 5px; color: #333;">2. Verify Token</strong>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="verifyInput" class="input-std" placeholder="123 456" style="margin-bottom: 0; text-align: center; letter-spacing: 2px;">
+                            <button onclick="confirmMFA()" class="btn btn-primary">Verify</button>
                         </div>
                     </div>
                 </div>
-                {% else %}
-                <!-- Active Mode -->
-                 <div style="flex: 1;">
-                    <div style="background: #ecfdf5; border: 1px solid #d1fae5; padding: 15px; border-radius: 8px; color: #065f46;">
-                        <i class="fas fa-check-circle"></i> Your account is currently protected with MFA.
-                    </div>
-                    <button class="btn btn-secondary" onclick="startMFA()" style="margin-top: 15px; font-size: 0.85rem;">
-                        Re-configure Device
-                    </button>
-                     <!-- Wizard for Re-config (Hidden) -->
-                     <div id="mfaWizard" style="display: none; margin-top: 20px;">
-                         <!-- Same JS injects content here -->
-                         <img id="qrImage" src="" style="width: 0; height: 0;"> <!-- Placeholder to avoid JS error -->
-                     </div>
-                 </div>
-                {% endif %}
             </div>
         </div>
 
@@ -134,26 +92,6 @@
 </div>
 
 <script>
-    function toggleDrawer(drawerId, triggerElement) {
-        // Close all others
-        document.querySelectorAll('.setting-drawer').forEach(el => {
-            if (el.id !== drawerId) el.classList.remove('open');
-        });
-        document.querySelectorAll('.transition-icon').forEach(el => el.style.transform = 'rotate(0deg)');
-
-        // Toggle current
-        const drawer = document.getElementById(drawerId);
-        const isOpen = drawer.classList.contains('open');
-        
-        if (isOpen) {
-            drawer.classList.remove('open');
-            triggerElement.querySelector('.transition-icon').style.transform = 'rotate(0deg)';
-        } else {
-            drawer.classList.add('open');
-            triggerElement.querySelector('.transition-icon').style.transform = 'rotate(90deg)';
-        }
-    }
-
     async function startMFA() {
         const wizard = document.getElementById('mfaWizard');
         const btn = document.getElementById('btnSetupMFA');
@@ -162,14 +100,10 @@
         try {
             const res = await fetch('/api/setup-mfa');
             const data = await res.json();
-            
             wizard.style.display = 'block';
             document.getElementById('qrImage').src = data.qr_image;
             document.getElementById('verifyInput').focus();
-        } catch(e) {
-            alert("Connection error. Please try again.");
-            if(btn) btn.style.display = 'block';
-        }
+        } catch(e) { console.error(e); }
     }
 
     async function confirmMFA() {
@@ -180,24 +114,8 @@
             body: JSON.stringify({ token: code })
         });
         const data = await res.json();
-        
-        if(data.success) {
-            // Success Toast then reload
-            location.reload(); 
-        } else { 
-            alert(data.message); 
-            document.getElementById('verifyInput').style.borderColor = 'var(--danger)';
-        }
-    }
-    
-    // Auto-format MFA Input
-    const verifyInput = document.getElementById('verifyInput');
-    if(verifyInput){
-        verifyInput.addEventListener('input', function(e) {
-            let val = this.value.replace(/\D/g, '').substring(0,6);
-            if (val.length > 3) val = val.slice(0,3) + ' ' + val.slice(3);
-            this.value = val;
-        });
+        if(data.success) location.reload();
+        else alert(data.message);
     }
 </script>
 {% endblock %}

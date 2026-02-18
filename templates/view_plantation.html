@@ -76,15 +76,9 @@
                 </div>
             </div>
 
-            <!-- 2. CROP SELECTOR (Top Right) -->
-            <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
-                <select id="activeCropSelect" onchange="updateAI()" 
-                        style="padding: 8px 12px; border-radius: 20px; border: none; background: rgba(255,255,255,0.9); font-weight: bold; cursor: pointer;">
-                    <!-- Populated by JS -->
-                </select>
-            </div>
+         
 
-            <!-- 3. TRACKING BOX -->
+         
             <div id="trackingBox" class="tracking-box" style="top: 50%; left: 50%;">
                 <div class="box-label" id="boxStatus">SCANNING</div>
                 <div class="box-label" style="align-self: flex-end;" id="boxConf">--%</div>
@@ -111,7 +105,7 @@
             
             <div class="tab-header">
                 <button class="tab-btn active" onclick="switchTab('logs')">Live Logs</button>
-                <button class="tab-btn" onclick="switchTab('actions')">Controls</button>
+ 
             </div>
 
             <!-- TAB 1: LOGS -->
@@ -301,17 +295,78 @@
         if (feed.children.length > 50) feed.removeChild(feed.firstChild); // Remove oldest
     }
 
-    // --- 4. TOGGLES & ACTIONS ---
     function toggleSystem(type, el) {
         const statusId = type + 'Status';
         const label = document.getElementById(statusId);
-        if(el.checked) {
-            label.innerText = "Active - Running";
-            label.style.color = "var(--success)";
-        } else {
-            label.innerText = "System Standby";
-            label.style.color = "#888";
+        const systemName = type === 'irrigation' ? 'Irrigation Pump' : 'Grow Lights';
+        
+        // 1. Visual Loading State
+        label.innerText = "Transmitting Command...";
+        label.style.color = "#d4a574"; // Gold color
+        el.disabled = true; // Prevent spamming
+
+        // 2. Simulate Network Delay (1.5 seconds)
+        setTimeout(() => {
+            el.disabled = false;
+
+            if(el.checked) {
+                // SUCCESS STATE
+                label.innerHTML = '<i class="fas fa-check-circle"></i> Active - Running';
+                label.style.color = "var(--success)";
+                
+                // 3. Inject Log into Terminal (The "Purpose")
+                addSystemLog("CMD_EXEC", `${systemName} turned ON by Admin`);
+                
+                // 4. Show Toast
+                showToast(`${systemName} Activated`);
+            } else {
+                // OFF STATE
+                label.innerText = "System Standby";
+                label.style.color = "#888";
+                
+                addSystemLog("CMD_STOP", `${systemName} turned OFF`);
+                showToast(`${systemName} Deactivated`);
+            }
+        }, 1200);
+    }
+
+    // Helper to add logs to the left-hand terminal from the right-hand controls
+    function addSystemLog(code, message) {
+        const feed = document.getElementById('terminalFeed');
+        const now = new Date().toLocaleTimeString();
+        
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.style.borderLeft = '3px solid #3498db'; // Blue for system commands
+        
+        line.innerHTML = `
+            <span class="log-time">[${now}]</span> 
+            <span style="color:#3498db; font-weight:bold;">${code}</span> 
+            | ${message}`;
+            
+        feed.prepend(line); // Add to top so user sees it immediately
+    }
+
+    // Simple Toast Notification Helper
+    function showToast(msg) {
+        // Check if container exists, if not create it
+        let container = document.getElementById('flashContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'flashContainer';
+            container.className = 'flash-container';
+            document.body.appendChild(container);
         }
+        
+        const div = document.createElement('div');
+        div.className = 'flash-msg flash-success';
+        div.innerHTML = `<i class="fas fa-check"></i> ${msg}`;
+        div.style.display = 'block'; // Force show
+        
+        container.appendChild(div);
+        
+        // Remove after 3 seconds
+        setTimeout(() => { div.remove(); }, 3000);
     }
 
     function toggleCamera() {
