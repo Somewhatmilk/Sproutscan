@@ -84,13 +84,21 @@ ul { list-style: none; }
     position: relative; max-width: 800px; margin: 0 auto;
     background: #729c76; /* Muted Green from designs */
     padding: 20px 30px; border-radius: 50px;
-    display: flex; align-items: center; box-shadow: var(--shadow);
+    display: flex; align-items: center; box-shadow: none;
 }
 .crop-searchbar input {
-    width: 100%; background: transparent; border: none; outline: none;
+    width: 100%; background: transparent; border: none; outline: none; box-shadow: none;
     color: white; font-size: 1.5rem; font-weight: 600; text-transform: uppercase;
 }
-.crop-searchbar input::placeholder { color: rgba(255,255,255,0.7); }
+
+.crop-searchbar input[type=text] {
+    border: none;
+    padding: 0;
+    border-radius: 0;
+    font-size: 1.5rem;
+}
+
+.crop-searchbar input::placeholder { color: rgba(255,255,255,0.7);}
 
 /* Crop Accordion List (Adapted from viewcrops styles) */
 .crop-accordion-item {
