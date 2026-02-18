@@ -872,10 +872,10 @@ def cropstage_view():
 def add_crop_page():
     return render_template("cropstage_add.html")
 
-@app.route("/api/crops", methods=['GET', 'POST'])
+@app.route("/api/crops", methods=["GET", "POST"])
 @login_required
 def handle_crops():
-    if request.method == 'POST':
+    if request.method == "POST":
         data = request.get_json(silent=True) or {}
         crop_name = (data.get("crop_name") or "").strip()
         category = (data.get("category") or "").strip()
@@ -884,12 +884,18 @@ def handle_crops():
         if not crop_name or not category:
             return jsonify({"error": "Crop name and category are required"}), 400
 
+        if not re.fullmatch(r"[A-Za-z ]+", crop_name):
+            return jsonify({"error": "Crop name must contain only letters and spaces (no numbers or special characters)"}), 400
+
+        if len(crop_name) < 6:
+            return jsonify({"error": "Crop name must be at least 6 characters long"}), 400
+
         Crop.create(crop_name, category, notes)
         return jsonify({"message": "Crop created"}), 201
-    
+
     # GET
     crops = Crop.get_all_with_stages()
-    return jsonify(crops)
+    return jsonify(crops), 200
 
 
 
