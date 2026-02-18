@@ -4,20 +4,46 @@
 {% block content %}
 <div style="height: calc(100vh - 80px); padding: 15px; display: flex; flex-direction: column; gap: 15px; overflow: hidden;">
     
-    <!-- 1. COMPACT HEADER -->
-    <div style="display: flex; justify-content: space-between; align-items: center; height: 40px; flex-shrink: 0;">
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <a href="{{ url_for('home') }}" style="color: #b8c5be; font-size: 0.9rem;"><i class="fas fa-arrow-left"></i> Back</a>
-            <h2 style="margin: 0; color: white; font-size: 1.4rem;">
-                {{ plantation.name }} 
-                <span style="font-size: 0.5em; opacity: 0.7; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">{{ plantation.number }}</span>
-            </h2>
+<div style="background: #1e293b; padding: 10px 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    
+    <!-- LEFT: Navigation Buttons -->
+    <div style="display: flex; gap: 10px; align-items: center;">
+        {% if active_zone %}
+            <a href="{{ url_for('view_farm_overview', farm_id=plantation.id) }}" class="btn btn-sm btn-outline" style="border: 1px solid rgba(255,255,255,0.3);">
+                <i class="fas fa-arrow-left"></i> Overview
+            </a>
+        {% else %}
+            <a href="{{ url_for('home') }}" class="btn btn-sm btn-outline" style="border: 1px solid rgba(255,255,255,0.3);">
+                <i class="fas fa-arrow-left"></i> Dashboard
+            </a>
+        {% endif %}
+
+       
+        <a href="{{ url_for('view_list') }}" class="btn btn-sm" style="background: rgba(114, 156, 118, 0.2); border: 1px solid #729c76; color: #a3cfbb;">
+            <i class="fas fa-seedling"></i> View Crop DB
+        </a>
+    </div>
+
+    <!-- CENTER: Title (Centered to prevent overlap) -->
+    <div style="text-align: right;">
+        <h1 style="font-size: 1.2rem; margin: 0; color: white; line-height: 1;">
+            {{ plantation.name }}
+        </h1>
+        <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">
+            {% if active_zone %}
+                <span style="color: var(--primary);">{{ active_zone.name }}</span>
+            {% else %}
+                Serial: {{ plantation.number }}
+            {% endif %}
         </div>
     </div>
+</div>
 
     <!-- 2. MAIN COCKPIT GRID -->
     <div style="display: grid; grid-template-columns: 2.5fr 1fr; gap: 15px; height: 100%; overflow: hidden;">
         
+    
+
         <!-- LEFT: VIDEO & HUD -->
         <div style="position: relative; border-radius: 12px; overflow: hidden; background: #000; box-shadow: var(--shadow-md);">
             
@@ -27,7 +53,7 @@
                 <img id="staticFeed" src="{{ url_for('static', filename='images/farm1.jpg') }}" style="width: 100%; height: 100%; object-fit: cover; display: none;">
             </div>
 
-            <!-- 1. AI PILL (Top Left - UPGRADED) -->
+           
             <div id="ai-pill" class="glass-pill" style="top: 20px; left: 20px; z-index: 30; width: 220px;">
                 <div class="pill-header">
                     <div id="ai-indicator" class="pulsing-dot"></div>
@@ -167,16 +193,115 @@
     </div>
 </div>
 
-<style>
-    /* Toggle Switch CSS */
-    input:checked + .slider { background-color: var(--success); }
-    input:checked + .slider .slider-knob { transform: translateX(18px); }
-</style>
+ 
 
 <script>
+    // --- 1. ROBUST CAMERA LOGIC (10s COOLDOWN) ---
+    const liveFeed = document.getElementById('liveFeed');
+    const staticFeed = document.getElementById('staticFeed');
+    const trackingBox = document.getElementById('trackingBox');
+    let camRetryTimer = null;
+
+    // When camera loads successfully
+    liveFeed.onload = function() {
+        liveFeed.style.display = 'block';
+        staticFeed.style.display = 'none';
+        trackingBox.style.display = 'flex';
+        // Add visual success indicator
+        document.getElementById('ai-status').innerText = "LIVE FEED ACTIVE";
+    };
+
+    // When camera fails (Offline)
+    liveFeed.onerror = function() {
+        console.log("Camera Stream Lost. Switching to static fallback.");
+        
+        // 1. Switch UI to static immediately
+        liveFeed.style.display = 'none';
+        staticFeed.style.display = 'block';
+        trackingBox.style.display = 'none'; // Hide tracking box on static image
+        
+        // 2. Stop the browser from continuously trying to load the broken stream
+        const originalSrc = liveFeed.src;
+        liveFeed.src = ""; // This stops the "spinner"
+        
+        document.getElementById('ai-status').innerText = "SIGNAL LOST (RETRY 10s)";
+        document.getElementById('ai-status').style.color = "var(--danger)";
+
+        // 3. Set 10s Cooldown
+        clearTimeout(camRetryTimer);
+        camRetryTimer = setTimeout(() => {
+            console.log("Cooldown over. Attempting reconnect...");
+            document.getElementById('ai-status').innerText = "RECONNECTING...";
+            // Add timestamp to force browser to try new connection
+            liveFeed.src = originalSrc.split('?')[0] + "?t=" + new Date().getTime(); 
+        }, 10000); // 10000ms = 10 Seconds
+    };
+
+    // --- 2. LOG INTEGRATION ---
+    // This injects DB logs into the terminal on page load
+    document.addEventListener("DOMContentLoaded", function() {
+        const feed = document.getElementById('terminalFeed');
+        
+        // Jinja2 Loop to render DB logs into JS DOM
+        {% for log in logs %}
+            var entry = document.createElement('div');
+            entry.className = 'log-line';
+            entry.style.borderLeft = '3px solid var(--danger)'; // Mark as Incident
+            entry.innerHTML = `
+                <span class="log-time" style="color:#aaa;">[{{ log.entry_time }}]</span> 
+                <span style="color:var(--danger); font-weight:bold;">REPORT</span> 
+                | {{ log.issue }} <span style="font-style:italic; color:#888;">({{ log.reporter_name }})</span>`;
+            feed.prepend(entry); // Add to top
+        {% endfor %}
+    });
+
+ 
     let isLive = true;
 
-    // --- 1. SYSTEM TOGGLES (ACTIONS TAB) ---
+    async function updateAI() {
+        // Only fetch AI data if the Live Feed is actually visible
+        if (liveFeed.style.display === 'none') return;
+
+        const crop = document.getElementById('activeCropSelect').value || 'Unknown';
+        const base = document.getElementById('ui_base').value;
+        const thresh = document.getElementById('ui_thresh').value;
+
+        try {
+            const res = await fetch(`/api/live-data?crop=${encodeURIComponent(crop)}&base_override=${base}&thresh_override=${thresh}`);
+            const data = await res.json();
+
+            // Update Box
+            trackingBox.style.left = data.box.x + '%';
+            trackingBox.style.top = data.box.y + '%';
+            trackingBox.style.borderColor = data.color;
+            trackingBox.style.boxShadow = `0 0 15px ${data.color}`;
+
+            // Update HUD
+            document.getElementById('boxStatus').innerText = data.status;
+            document.getElementById('boxConf').innerText = data.confidence + '%';
+            document.getElementById('ai-status').innerText = data.status;
+            document.getElementById('ai-status').style.color = data.color;
+            document.getElementById('ai-conf').innerText = data.confidence + '%';
+            document.getElementById('ai-insight').innerText = data.insight;
+            document.getElementById('ai-indicator').style.background = data.color;
+
+     
+            addLog(data);
+        } catch(e) { console.log("AI Data fetch error (expected if offline)"); }
+    }
+
+    function addLog(data) {
+        const feed = document.getElementById('terminalFeed');
+        const now = new Date().toLocaleTimeString();
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        line.innerHTML = `<span class="log-time">[${now}]</span> <span style="color:${data.color}">${data.status}</span> | Conf: ${data.confidence}% | ${data.insight}`;
+        feed.appendChild(line); // Add new AI logs to bottom
+        feed.scrollTop = feed.scrollHeight;
+        if (feed.children.length > 50) feed.removeChild(feed.firstChild); // Remove oldest
+    }
+
+    // --- 4. TOGGLES & ACTIONS ---
     function toggleSystem(type, el) {
         const statusId = type + 'Status';
         const label = document.getElementById(statusId);
@@ -189,128 +314,16 @@
         }
     }
 
-    // --- 2. EXPORT LOGS (ACTIONS TAB) ---
-    function exportLogs() {
-        // Simple client-side CSV generation from the current terminal feed
-        let csvContent = "data:text/csv;charset=utf-8,Time,Message\n";
-        const rows = document.querySelectorAll('.log-line');
-        rows.forEach(row => {
-            csvContent += row.innerText.replace(',', ';') + "\n"; // Basic cleaning
-        });
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "agriscan_logs.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
-    // --- 3. CAMERA TOGGLE ---
     function toggleCamera() {
+        // Manual toggle overrides auto-logic
         isLive = !isLive;
-        const liveFeed = document.getElementById('liveFeed');
-        const staticFeed = document.getElementById('staticFeed');
-        const trackingBox = document.getElementById('trackingBox');
-        const toggleIcon = document.getElementById('camToggleIcon');
-        const toggleText = document.getElementById('camToggleText');
-        const toggleBtn = document.getElementById('camToggleBtn');
-
-        if (isLive) {
-            liveFeed.style.display = 'block';
-            staticFeed.style.display = 'none';
-            trackingBox.style.display = 'flex';
-            toggleIcon.className = 'fas fa-power-off';
-            toggleBtn.style.color = '#2ecc71'; 
-            toggleText.innerText = 'LIVE ON';
+        if(isLive) {
+            liveFeed.src = "{{ url_for('video_feed') }}?t=" + new Date().getTime();
         } else {
             liveFeed.style.display = 'none';
             staticFeed.style.display = 'block';
             trackingBox.style.display = 'none';
-            const randomNum = Math.floor(Math.random() * 5) + 1;
-            staticFeed.src = `/static/images/farm${randomNum}.jpg`;
-            toggleIcon.className = 'fas fa-video-slash';
-            toggleBtn.style.color = 'var(--danger)';
-            toggleText.innerText = 'OFFLINE';
         }
-    }
-
-    // --- 4. SNAPSHOT ---
-    async function takeSnapshot() {
-        const flash = document.getElementById('flash');
-        flash.style.opacity = '1';
-        setTimeout(() => flash.style.opacity = '0', 100);
-        try {
-            await fetch('/api/snapshot', { method: 'POST' });
-        } catch(e) { console.error(e); }
-    }
-
-    // --- 5. INITIALIZATION ---
-    document.addEventListener('DOMContentLoaded', () => {
-        loadProfiles();
-        setInterval(updateAI, 200); 
-    });
-
-    async function loadProfiles() {
-        const res = await fetch('/api/ai-profiles');
-        const profiles = await res.json();
-        const select = document.getElementById('activeCropSelect');
-        profiles.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.crop_name;
-            opt.innerText = p.crop_name;
-            select.appendChild(opt);
-        });
-    }
-
-    // --- 6. MAIN AI LOOP (FIXED) ---
-    async function updateAI() {
-        if (!isLive) return;
-
-        const crop = document.getElementById('activeCropSelect').value || 'Unknown';
-        const base = document.getElementById('ui_base').value;
-        const thresh = document.getElementById('ui_thresh').value;
-
-        const res = await fetch(`/api/live-data?crop=${encodeURIComponent(crop)}&base_override=${base}&thresh_override=${thresh}`);
-        const data = await res.json();
-
-        // A. UPDATE TRACKING BOX
-        const box = document.getElementById('trackingBox');
-        box.style.left = data.box.x + '%';
-        box.style.top = data.box.y + '%';
-        box.style.borderColor = data.color;
-        box.style.boxShadow = `0 0 15px ${data.color}`;
-
-        document.getElementById('boxStatus').innerText = data.status;
-        document.getElementById('boxConf').innerText = data.confidence + '%';
-
-        // B. UPDATE AI PILL (FIXED - This was missing)
-        document.getElementById('ai-status').innerText = data.status;
-        document.getElementById('ai-status').style.color = data.color; // Match status color
-        document.getElementById('ai-conf').innerText = data.confidence + '%';
-        document.getElementById('ai-insight').innerText = data.insight;
-        
-        // Update Latency Simulation
-        const latency = Math.floor(Math.random() * 20 + 10);
-        document.getElementById('ai-latency').innerHTML = `<i class="fas fa-bolt" style="color: #f1c40f;"></i> ${latency}ms`;
-
-        // Update Pill Dot
-        document.getElementById('ai-indicator').style.background = data.color;
-
-        // C. LOGS
-        addLog(data);
-    }
-
-    function addLog(data) {
-        const feed = document.getElementById('terminalFeed');
-        const now = new Date().toLocaleTimeString();
-        const line = document.createElement('div');
-        line.className = 'log-line';
-        const statusHtml = `<span style="color:${data.color}">${data.status}</span>`;
-        line.innerHTML = `<span class="log-time">[${now}]</span> ${statusHtml} | Conf: ${data.confidence}% | ${data.insight}`;
-        feed.appendChild(line); 
-        feed.scrollTop = feed.scrollHeight;
-        if (feed.children.length > 50) feed.removeChild(feed.lastChild);
     }
 
     function switchTab(tabId) {
@@ -318,6 +331,27 @@
         document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById('tab-' + tabId).classList.add('active');
         event.target.classList.add('active');
+    }
+
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProfiles();
+        setInterval(updateAI, 500); // Slower interval (500ms) to reduce load
+    });
+
+    async function loadProfiles() {
+        try {
+            const res = await fetch('/api/ai-profiles');
+            const profiles = await res.json();
+            const select = document.getElementById('activeCropSelect');
+            select.innerHTML = '';
+            profiles.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.crop_name;
+                opt.innerText = p.crop_name;
+                select.appendChild(opt);
+            });
+        } catch(e) {}
     }
 </script>
 {% endblock %}

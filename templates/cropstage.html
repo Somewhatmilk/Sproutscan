@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Crop Stage - AgriScan AI{% endblock %}
+{% block extra_css %}
+<!-- We include main.css by default in base, no need for extra link -->
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="crop-header-section">
+        <h1 style="font-size: 3rem; margin-bottom: 10px;">HELLO, {{ g.user.name|upper }}</h1>
+        <div class="crop-searchbar">
+            <input id="cropSearch" type="text" placeholder="SEARCH FOR CROPS" autocomplete="off">
+            <!-- Reuse dropdown styles from main.css -->
+            <div id="suggestBox" class="dropdown-content" style="width: 100%; left: 0; top: 60px;"></div>
+        </div>
+    </div>
+
+    <div class="crop-cards-container">
+ 
+        <div class="crop-card-large">
+            <img src="https://img.hobbyfarms.com/wp-content/uploads/2019/03/22190424/sugarbeets-vegetable-crops-KWS-Group-Flickr-600x347.jpg">
+            <a href="{{ url_for('add_crop_page') }}" class="crop-btn-overlay">ADD A NEW CROP</a>
+        </div>
+        <!-- Card 2: View -->
+        <div class="crop-card-large">
+            <img src="{{ url_for('static', filename='images/viewfarms.png') }}" onerror="this.src='https://placehold.co/600x400/1b3e25/white?text=My+Crops'">
+            <a href="{{ url_for('view_list') }}" class="crop-btn-overlay">VIEW MY CROPS</a>
+        </div>
+        
+    </div>
+</div>
+
+<script>
+    // Search Logic adapted for Base layout
+    let cropNames = [];
+    fetch("/api/crops").then(r => r.json()).then(list => {
+        cropNames = list.map(c => c.crop_name);
+    });
+
+    const input = document.getElementById("cropSearch");
+    const box = document.getElementById("suggestBox");
+
+    input.addEventListener("input", () => {
+        const val = input.value.toLowerCase();
+        box.innerHTML = '';
+        if(!val) { box.classList.remove('show'); return; }
+
+        const matches = cropNames.filter(n => n.toLowerCase().includes(val));
+        if(matches.length > 0) {
+            box.classList.add('show');
+            matches.forEach(name => {
+                const div = document.createElement('div');
+                div.className = 'drop-item';
+                div.innerText = name;
+                div.onclick = () => window.location.href = `/crop_view?q=${encodeURIComponent(name)}`;
+                box.appendChild(div);
+            });
+        } else {
+            box.classList.remove('show');
+        }
+    });
+</script>
+{% endblock %}

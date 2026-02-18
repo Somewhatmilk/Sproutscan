@@ -1,0 +1,30 @@
+<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+  <!-- Brand -->
+  <a class="navbar-brand" href="/">SPROUTSCÁN</a>
+
+  <ul class="navbar-nav">
+
+    <!-- Report Error: Click = Dashboard, Arrow = Dropdown -->
+    <li class="nav-item dropdown d-flex align-items-center">
+
+  
+      <a class="nav-link" href="{{ url_for('create_report') }}">REPORT ERROR</a>
+        REPORT ERROR
+      </a>
+
+      <!-- Dropdown arrow only -->
+      <a class="nav-link dropdown-toggle dropdown-toggle-split" href="#" id="reportErrorDropdown"
+        role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        <span class="sr-only">Toggle Dropdown</span>
+      </a>
+
+      <!-- Dropdown menu -->
+      <div class="dropdown-menu">
+        <a class="dropdown-item" href="/createReport">Create Report</a>
+        <a class="dropdown-item" href="/retrieveReports">Retrieve Reports</a>
+      </div>
+
+    </li>
+
+  </ul>
+</nav>

@@ -1,5 +1,13 @@
 from wtforms import Form, StringField, PasswordField, SelectField, TextAreaField, validators
+ 
 
+class ReportForm(Form):
+    staff_name = StringField('Staff Name', [validators.Length(min=1, max=150), validators.DataRequired()])
+    category = SelectField('Category', choices=[('', 'Select'), ('H', 'Hardware'), ('S', 'Software'), ('N', 'Network')], validators=[validators.DataRequired()])
+    description = TextAreaField('Description', [validators.DataRequired()])
+    remarks = TextAreaField('Remarks', [validators.Optional()])
+
+    
 class LoginForm(Form):
     username = StringField('Username', [validators.DataRequired()])
     password = PasswordField('Password', [validators.DataRequired()])

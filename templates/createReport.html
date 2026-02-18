@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Report Error - AgriScan AI{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="report-form-card">
+        <h1>Report Technical Error</h1>
+        <p class="text-muted">Describe the issue encountered by the AI or hardware units.</p>
+
+        <form method="POST">
+            <div class="form-group mb-4">
+                <label>Reporter Name</label>
+                <input type="text" name="staff_name" class="input-std" value="{{ g.user.name }}" readonly>
+            </div>
+
+            <div class="form-group mb-4">
+                <label>System Category</label>
+                <select name="category" class="input-std" required>
+                    <option value="H">Hardware / Camera Unit</option>
+                    <option value="S">Software / AI Dashboard</option>
+                    <option value="N">Network / Connectivity</option>
+                </select>
+            </div>
+
+            <div class="form-group mb-4">
+                <label>Detailed Description *</label>
+                <div class="quill-wrapper" id="quillWrapper">
+                    <div id="editor"></div>
+                </div>
+                <!-- Hidden input that Flask actually reads -->
+                <textarea name="description" id="hidden-description" style="display:none;"></textarea>
+                <small class="text-muted"><span id="charCount">0</span> / 1000 characters</small>
+            </div>
+
+            <div class="form-group mb-4">
+                <label>Internal Remarks (Optional)</label>
+                <textarea name="remarks" class="input-std" style="height: 80px;"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 15px;">
+                <a href="{{ url_for('home') }}" class="btn btn-secondary" style="flex:1">CANCEL</a>
+                <button type="submit" class="btn btn-primary" style="flex:2">SUBMIT REPORT</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Quill Scripts -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+<script>
+    var quill = new Quill('#editor', {
+        theme: 'snow',
+        modules: { toolbar: [['bold', 'italic'], [{ 'list': 'bullet' }], ['clean']] }
+    });
+    const hiddenInput = document.getElementById("hidden-description");
+    quill.on('text-change', () => {
+        hiddenInput.value = quill.root.innerHTML;
+        document.getElementById("charCount").innerText = quill.getText().trim().length;
+    });
+</script>
+{% endblock %}

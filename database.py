@@ -27,7 +27,8 @@ class Database:
                 date_created TEXT NOT NULL,
                 last_updated TEXT, 
                 is_deleted INTEGER DEFAULT 0,
-                date_deleted TEXT
+                date_deleted TEXT,
+                global_crop_id INTEGER
             )
         ''')
 
@@ -36,8 +37,28 @@ class Database:
             cursor.execute("ALTER TABLE plantations ADD COLUMN last_updated TEXT")
             print("MIGRATION SUCCESS: Added 'last_updated' column.")
         except sqlite3.OperationalError:
-            pass # Column already exists, ignore error
+            pass  
 
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS farm_zones (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                farm_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                type TEXT DEFAULT 'camera', 
+                status TEXT DEFAULT 'Online',
+                crop_id INTEGER,
+                FOREIGN KEY (farm_id) REFERENCES plantations (id)
+            )
+        ''')
+        try:
+            cursor.execute("ALTER TABLE plantations ADD COLUMN global_crop_id INTEGER")
+            print("Migrated: Added global_crop_id to plantations")
+        except sqlite3.OperationalError: pass  
+
+        try:
+            cursor.execute("ALTER TABLE farm_zones ADD COLUMN crop_id INTEGER")
+            print("Migrated: Added crop_id to farm_zones")
+        except sqlite3.OperationalError: pass
 
         # 2. USERS  
         cursor.execute('''
@@ -81,6 +102,30 @@ class Database:
         """)
         
         cursor.execute("""
+            CREATE TABLE IF NOT EXISTS crops (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                crop_name TEXT NOT NULL,
+                category TEXT NOT NULL,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # --- CROP STAGE TABLE ---
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS cropstage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                crop_id INTEGER NOT NULL,
+                stage_name TEXT,
+                expected_days INTEGER,
+                ai_confidence REAL,
+                status TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (crop_id) REFERENCES crops(id)
+            )
+        """)
+
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS cropstage (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 crop_id INTEGER NOT NULL,
@@ -92,7 +137,16 @@ class Database:
                 FOREIGN KEY (crop_id) REFERENCES crops(id)
             )
         """)
-
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS reports (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                staff_name TEXT NOT NULL,
+                category TEXT NOT NULL,
+                description TEXT NOT NULL,
+                remarks TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
         cursor.execute('SELECT COUNT(*) FROM users')
         if cursor.fetchone()[0] == 0:
             default_pw = generate_password_hash('123')
@@ -107,11 +161,287 @@ class Database:
             )
             print("Default users seeded.")
 
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS pest_log_folders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                number TEXT NOT NULL,
+                name TEXT NOT NULL,
+                date_created TEXT NOT NULL
+            )
+        ''')
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS pest_log_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                folder_id INTEGER NOT NULL,
+                plantation INTEGER NOT NULL,
+                plant_name TEXT NOT NULL,
+                issue TEXT NOT NULL,
+                remarks TEXT,
+                resolved TEXT DEFAULT 'No',
+                staff_name TEXT NOT NULL,
+                entry_time TEXT NOT NULL,
+                FOREIGN KEY (folder_id) REFERENCES pest_log_folders(id) ON DELETE CASCADE
+            )
+        ''')
+
         conn.commit()
         conn.close()
 
+class FarmZone:
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id')
+        self.farm_id = kwargs.get('farm_id')
+        self.name = kwargs.get('name')
+        self.type = kwargs.get('type')
+        self.status = kwargs.get('status', 'Online')
+
+    @staticmethod
+    def get_by_farm(farm_id):
+        db = Database()
+        conn = db.get_connection()
+        
+      
+        sql = """
+            SELECT z.*, c.crop_name 
+            FROM farm_zones z 
+            LEFT JOIN crops c ON z.crop_id = c.id 
+            WHERE z.farm_id=?
+        """
+        rows = conn.execute(sql, (farm_id,)).fetchall()
+        results = [FarmZone(**dict(row)) for row in rows]
+        
+        # 2. PRESERVE YOUR ORIGINAL LOGIC: If no zones exist, seed defaults
+        if not results:
+            defaults = [
+                ("Topic Area (Broad View)", "master"),
+                ("Plantation Alpha", "camera"),
+                ("Plantation Beta", "camera"),
+                ("Nursery Sector", "camera"),
+                ("Storage Feed", "camera")
+            ]
+            for name, ztype in defaults:
+                # We seed with crop_id as NULL initially
+                conn.execute("INSERT INTO farm_zones (farm_id, name, type) VALUES (?, ?, ?)", 
+                             (farm_id, name, ztype))
+            conn.commit()
+            
+            # 3. RE-FETCH after seeding to get the objects with the JOIN applied
+            rows = conn.execute(sql, (farm_id,)).fetchall()
+            results = [FarmZone(**dict(row)) for row in rows]
+            
+        conn.close()
+        return results
+
+     
+    @staticmethod
+    def set_zone_crop(zone_id, crop_id):
+        db = Database()
+        conn = db.get_connection()
+        conn.execute("UPDATE farm_zones SET crop_id = ? WHERE id = ?", (crop_id, zone_id))
+        conn.commit()
+        conn.close()
+
+
+    @staticmethod
+    def get_by_id(zid):
+        db = Database()
+        conn = db.get_connection()
+        row = conn.execute("SELECT * FROM farm_zones WHERE id=?", (zid,)).fetchone()
+        conn.close()
+        return FarmZone(**dict(row)) if row else None
+
+
+class Crop:
+    @staticmethod
+    def get_all_with_stages():
+        db = Database()
+        conn = db.get_connection()
+        # Complex query to get crop details plus the LATEST stage info
+        rows = conn.execute("""
+            SELECT
+                c.id,
+                c.id AS crop_id, -- Ensure compatibility
+                c.crop_name,
+                c.category,
+                c.notes,
+                COALESCE(cs.stage_name, '') AS stage_name,
+                COALESCE(cs.expected_days, '') AS expected_days,
+                COALESCE(cs.ai_confidence, '') AS ai_confidence,
+                COALESCE(cs.status, '') AS status
+            FROM crops c
+            LEFT JOIN cropstage cs
+              ON cs.id = (
+                SELECT id
+                FROM cropstage
+                WHERE crop_id = c.id
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+              )
+            ORDER BY c.id DESC
+        """).fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+
+    @staticmethod
+    def create(name, category, notes):
+        db = Database()
+        conn = db.get_connection()
+        conn.execute(
+            "INSERT INTO crops (crop_name, category, notes) VALUES (?, ?, ?)",
+            (name, category, notes)
+        )
+        conn.commit()
+        conn.close()
+    
+    @staticmethod
+    def delete(crop_id):
+        db = Database()
+        conn = db.get_connection()
+        conn.execute("DELETE FROM cropstage WHERE crop_id = ?", (crop_id,))
+        conn.execute("DELETE FROM crops WHERE id = ?", (crop_id,))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def add_stage(crop_id, stage_name, expected_days=None):
+        db = Database()
+        conn = db.get_connection()
+      
+        conn.execute("""
+            INSERT INTO cropstage (crop_id, stage_name, expected_days, status)
+            VALUES (?, ?, 
+                COALESCE(?, (SELECT expected_days FROM cropstage WHERE crop_id=? ORDER BY created_at DESC, id DESC LIMIT 1)), 
+                COALESCE((SELECT status FROM cropstage WHERE crop_id=? ORDER BY created_at DESC, id DESC LIMIT 1), 'UNKNOWN'))
+        """, (crop_id, stage_name, expected_days, crop_id, crop_id))
+        conn.commit()
+        conn.close()
+
+class PestLogFolder:
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id')
+        self.number = kwargs.get('number')
+        self.name = kwargs.get('name')
+        self.date_created = kwargs.get('date_created') or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def save(self):
+        db = Database()
+        conn = db.get_connection()
+        if self.id:
+            conn.execute('UPDATE pest_log_folders SET name=? WHERE id=?', (self.name, self.id))
+        else:
+            conn.execute('INSERT INTO pest_log_folders (number, name, date_created) VALUES (?, ?, ?)',
+                         (self.number, self.name, self.date_created))
+        conn.commit()
+        # Get ID if new
+        if not self.id:
+            self.id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+        conn.close()
+        return self
+
+    @staticmethod
+    def get_all():
+        db = Database()
+        conn = db.get_connection()
+        rows = conn.execute("SELECT * FROM pest_log_folders ORDER BY id DESC").fetchall()
+        conn.close()
+        return [PestLogFolder(**dict(row)) for row in rows]
+
+    @staticmethod
+    def get_by_id(zid):
+        db = Database()
+        conn = db.get_connection()
+        row = conn.execute("SELECT * FROM farm_zones WHERE id=?", (zid,)).fetchone()
+        conn.close()
+        return FarmZone(**dict(row)) if row else None
+    
+    @staticmethod
+    def delete(fid):
+        db = Database()
+        conn = db.get_connection()
+        conn.execute("DELETE FROM pest_log_entries WHERE folder_id=?", (fid,)) # Cascade manual
+        conn.execute("DELETE FROM pest_log_folders WHERE id=?", (fid,))
+        conn.commit()
+        conn.close()
+
+class PestLogEntry:
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id')
+        self.folder_id = kwargs.get('folder_id')
+        self.plantation = kwargs.get('plantation')
+        self.plant_name = kwargs.get('plant_name')
+        self.issue = kwargs.get('issue')
+        self.remarks = kwargs.get('remarks', '')
+        self.resolved = kwargs.get('resolved', 'No')
+        self.staff_name = kwargs.get('staff_name')
+        self.entry_time = kwargs.get('entry_time') or datetime.now().strftime("%d/%m/%Y %I:%M %p")
+        
+        # Virtual for display
+        self.folder_name = kwargs.get('folder_name', '')
+
+    def save(self):
+        db = Database()
+        conn = db.get_connection()
+        if self.id:
+            conn.execute('''
+                UPDATE pest_log_entries 
+                SET plantation=?, plant_name=?, issue=?, remarks=?, resolved=?
+                WHERE id=?
+            ''', (self.plantation, self.plant_name, self.issue, self.remarks, self.resolved, self.id))
+        else:
+            conn.execute('''
+                INSERT INTO pest_log_entries (folder_id, plantation, plant_name, issue, remarks, resolved, staff_name, entry_time)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (self.folder_id, self.plantation, self.plant_name, self.issue, self.remarks, self.resolved, self.staff_name, self.entry_time))
+        conn.commit()
+        conn.close()
+    
+    def to_dict(self):
+        return self.__dict__
+
+    @staticmethod
+    def get_by_folder(folder_id):
+        db = Database()
+        conn = db.get_connection()
+        rows = conn.execute("SELECT * FROM pest_log_entries WHERE folder_id=? ORDER BY id DESC", (folder_id,)).fetchall()
+        conn.close()
+        return [PestLogEntry(**dict(row)) for row in rows]
+
+    @staticmethod
+    def get_by_id(eid):
+        db = Database()
+        conn = db.get_connection()
+        row = conn.execute("SELECT * FROM pest_log_entries WHERE id=?", (eid,)).fetchone()
+        conn.close()
+        return PestLogEntry(**dict(row)) if row else None
+
+    @staticmethod
+    def delete(eid):
+        db = Database()
+        conn = db.get_connection()
+        conn.execute("DELETE FROM pest_log_entries WHERE id=?", (eid,))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def search(query):
+        db = Database()
+        conn = db.get_connection()
+        q = f"%{query}%"
+        sql = '''
+            SELECT e.*, f.name as folder_name 
+            FROM pest_log_entries e
+            JOIN pest_log_folders f ON e.folder_id = f.id
+            WHERE e.plant_name LIKE ? OR e.issue LIKE ? OR e.remarks LIKE ? OR e.staff_name LIKE ?
+            ORDER BY e.id DESC
+        '''
+        rows = conn.execute(sql, (q, q, q, q)).fetchall()
+        conn.close()
+        return [PestLogEntry(**dict(row)) for row in rows]
+
 class Plantation:
-    # UPDATED: Use **kwargs to prevent AttributeError if DB schema creates new columns
+   
     def __init__(self, **kwargs):
         self.id = kwargs.get('id')
         self.number = kwargs.get('number')
@@ -120,7 +450,7 @@ class Plantation:
         self.last_updated = kwargs.get('last_updated')
         self.is_deleted = kwargs.get('is_deleted', 0)
         self.date_deleted = kwargs.get('date_deleted')
-        
+        self.global_crop_id = kwargs.get('global_crop_id') 
         # Virtual Property for status
         self._status = None 
 
@@ -142,6 +472,55 @@ class Plantation:
             else:
                 self._status = 'Online'
         return self._status
+
+
+    def get_effective_crop(self, zone_id=None):
+        """
+        Determines the active crop for AI tracking.
+        Hierarchy: 
+        1. Check if the specific Zone (Camera) has a manual override.
+        2. If not, check the Farm's Global setting.
+        3. If no settings exist, return a generic default.
+        """
+        db = Database()
+        conn = db.get_connection()
+        
+        crop_data = None
+        
+        try:
+            # 1. PRIORITY: Check for Zone-specific override
+            if zone_id:
+                row = conn.execute("SELECT crop_id FROM farm_zones WHERE id = ?", (zone_id,)).fetchone()
+                if row and row['crop_id']:
+                    crop_row = conn.execute("SELECT * FROM crops WHERE id = ?", (row['crop_id'],)).fetchone()
+                    if crop_row:
+                        crop_data = dict(crop_row)
+
+            # 2. FALLBACK: If no zone override, check Farm Global setting
+            if not crop_data and self.global_crop_id:
+                crop_row = conn.execute("SELECT * FROM crops WHERE id = ?", (self.global_crop_id,)).fetchone()
+                if crop_row:
+                    crop_data = dict(crop_row)
+            
+            # 3. FINAL FALLBACK
+            if not crop_data:
+                crop_data = {"crop_name": "General Detection", "base_confidence": 80}
+        
+        finally:
+            conn.close()  
+
+        return crop_data
+
+ 
+    @staticmethod
+    def set_zone_crop(zone_id, crop_id):
+        db = Database()
+        conn = db.get_connection()
+        # If crop_id is '0' or None, we set it to NULL to revert to Global
+        val = crop_id if crop_id and int(crop_id) > 0 else None
+        conn.execute("UPDATE farm_zones SET crop_id = ? WHERE id = ?", (val, zone_id))
+        conn.commit()
+        conn.close()
 
     def save(self):
         db = Database()
@@ -264,26 +643,27 @@ class IncidentLog:
     def __init__(self, **kwargs):
         self.id = kwargs.get('id')
         self.plantation_id = kwargs.get('plantation_id')
+        self.farm_name = kwargs.get('farm_name', 'Unknown Farm') # For Marquee
         
- 
+      
         raw_issue = kwargs.get('issue', '')
         raw_remarks = kwargs.get('remarks', '')
         
         try:
-            self.issue = sec.decrypt_data(raw_issue) if raw_issue and len(raw_issue) > 50 else raw_issue
-        except: 
+ 
+            self.issue = sec.decrypt_data(raw_issue)
+        except Exception:
             self.issue = raw_issue
 
         try:
-            self.category = kwargs.get('category', 'Other')
-            self.severity = kwargs.get('severity')
-            self.reporter_name = kwargs.get('reporter_name')
-            self.entry_time = kwargs.get('entry_time') or datetime.now().strftime('%Y-%m-%d %H:%M')
-            
-            self.remarks = sec.decrypt_data(raw_remarks) if raw_remarks and len(raw_remarks) > 50 else raw_remarks
-        except:
+            self.remarks = sec.decrypt_data(raw_remarks)
+        except Exception:
             self.remarks = raw_remarks
-            
+
+        self.category = kwargs.get('category', 'Other')
+        self.severity = kwargs.get('severity', 'Low')
+        self.reporter_name = kwargs.get('reporter_name')
+        self.entry_time = kwargs.get('entry_time') or datetime.now().strftime('%d/%m/%Y %I:%M %p')
         self.resolved = kwargs.get('resolved', 0)
 
     def save(self):
@@ -333,60 +713,16 @@ class IncidentLog:
     def get_by_plantation(plantation_id):
         db = Database()
         conn = db.get_connection()
-        rows = conn.execute('SELECT * FROM pest_logs WHERE plantation_id = ? ORDER BY entry_time DESC', (plantation_id,)).fetchall()
+ 
+        rows = conn.execute('''
+            SELECT * FROM pest_logs 
+            WHERE plantation_id = ? 
+            ORDER BY id DESC
+        ''', (plantation_id,)).fetchall()
         conn.close()
         return [IncidentLog(**dict(row)) for row in rows]
 
-class Crop:
-    @staticmethod
-    def get_all_with_stages():
-        db = Database()
-        conn = db.get_connection()
-        rows = conn.execute("""
-            SELECT
-                c.id,
-                c.crop_name,
-                c.category,
-                c.notes,
-                COALESCE(cs.stage_name, '') AS stage_name,
-                COALESCE(cs.expected_days, '') AS expected_days,
-                COALESCE(cs.ai_confidence, '') AS ai_confidence,
-                COALESCE(cs.status, '') AS status
-            FROM crops c
-            LEFT JOIN cropstage cs
-              ON cs.id = (
-                SELECT id
-                FROM cropstage
-                WHERE crop_id = c.id
-                ORDER BY created_at DESC, id DESC
-                LIMIT 1
-              )
-            ORDER BY c.id DESC
-        """).fetchall()
-        conn.close()
-        return [dict(row) for row in rows]
-
-    @staticmethod
-    def create(name, category, notes):
-        db = Database()
-        conn = db.get_connection()
-        conn.execute(
-            "INSERT INTO crops (crop_name, category, notes) VALUES (?, ?, ?)",
-            (name, category, notes)
-        )
-        conn.commit()
-        conn.close()
-    
-    @staticmethod
-    def delete(crop_id):
-        db = Database()
-        conn = db.get_connection()
-        conn.execute("DELETE FROM cropstage WHERE crop_id = ?", (crop_id,))
-        conn.execute("DELETE FROM crops WHERE id = ?", (crop_id,))
-        conn.commit()
-        conn.close()
-
-      
+ 
 
 class AIProfile:
     def __init__(self, **kwargs):
@@ -459,3 +795,53 @@ class AIProfile:
             if p.crop_name == name:
                 return p
         return profiles[0] # Return first as fallback
+    
+
+class Report:
+    def __init__(self, **kwargs):
+        self.id = kwargs.get('id')
+        self.staff_name = kwargs.get('staff_name')
+        self.category = kwargs.get('category')
+        self.description = kwargs.get('description')
+        self.remarks = kwargs.get('remarks')
+        self.created_at = kwargs.get('created_at')
+
+    def save(self):
+        db = Database()
+        conn = db.get_connection()
+        if self.id:
+            conn.execute('UPDATE reports SET staff_name=?, category=?, description=?, remarks=? WHERE id=?',
+                         (self.staff_name, self.category, self.description, self.remarks, self.id))
+        else:
+            conn.execute('INSERT INTO reports (staff_name, category, description, remarks) VALUES (?, ?, ?, ?)',
+                         (self.staff_name, self.category, self.description, self.remarks))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def get_all(search_query=None):
+        db = Database()
+        conn = db.get_connection()
+        if search_query:
+            q = f"%{search_query}%"
+            rows = conn.execute("SELECT * FROM reports WHERE staff_name LIKE ? OR description LIKE ? ORDER BY id DESC", (q, q)).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM reports ORDER BY id DESC").fetchall()
+        conn.close()
+        return [Report(**dict(row)) for row in rows]
+
+    @staticmethod
+    def get_by_id(report_id):
+        db = Database()
+        conn = db.get_connection()
+        row = conn.execute("SELECT * FROM reports WHERE id=?", (report_id,)).fetchone()
+        conn.close()
+        return Report(**dict(row)) if row else None
+
+    @staticmethod
+    def delete(report_id):
+        db = Database()
+        conn = db.get_connection()
+        conn.execute("DELETE FROM reports WHERE id=?", (report_id,))
+        conn.commit()
+        conn.close()

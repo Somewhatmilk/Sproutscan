@@ -1,3 +1,4 @@
+ 
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -21,14 +22,19 @@
         <div class="nav-links">
             <a href="{{ url_for('home') }}">Dashboard</a>
             <a href="{{ url_for('view_farms') }}">Farm Registry</a>
+            <a href="{{ url_for('cropstage_view') }}"><i class="fas fa-seedling"></i> Crop Stage</a>
+            <a href="{{ url_for('pest_logs') }}">Pest Logs</a> 
             {% if g.user.role == 'admin' %}
+             <a href="{{ url_for('create_report') }}" style="color: #ff9f43;">
+            <i class="fas fa-bug"></i> Report Error
+            </a>
             <a href="{{ url_for('manage_users') }}">Users</a>
             {% endif %}
         </div>
 
         <!-- User Profile Dropdown -->
         <div class="user-menu" onclick="document.getElementById('profileDrop').classList.toggle('show')">
-            <div style="width: 30px; height: 30px; --avatar-bg: background: {{ g.user.avatar_color }}; border-radius: 50%; display:grid; place-items:center; font-weight:bold; color:#fff;">
+            <div style="width: 30px; height: 30px; background: {{ g.user.avatar_color }}; border-radius: 50%; display:grid; place-items:center; font-weight:bold; color:#fff;">
                 {{ g.user.name[0] }}
             </div>
             <span style="margin-left: 10px; font-weight: 500;">{{ g.user.name }}</span>
@@ -47,7 +53,7 @@
                 {% for u in g.all_users %}
                     {% if u.id != g.user.id %}
                     <div class="drop-item" onclick="initiateSwitch('{{u.username}}', '{{u.name}}')">
-                        <div class="user-avatar" style="width: 25px; height: 25px; font-size: 10px; --avatar-bg: background: {{u.avatar_color}}">
+                        <div class="user-avatar" style="width: 25px; height: 25px; font-size: 10px; background: {{u.avatar_color}}">
                             <i class="fas fa-user"></i>
                         </div>
                         <div>{{ u.name }} <span style="font-size: 0.7em; color: #888;">({{ u.role|upper }})</span></div>
@@ -63,7 +69,7 @@
     </nav>
     {% endif %}
 
-    <!-- FLASH MESSAGES SYSTEM (New SVG Toast Version) -->
+    <!-- FLASH MESSAGES SYSTEM -->
     <div class="flash-container" id="flashContainer">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -83,6 +89,53 @@
 
     <!-- MAIN CONTENT INJECTION -->
     {% block content %}{% endblock %}
+
+    <!-- GLOBAL FLOATING ACTION BUTTON (Visible Everywhere) -->
+    {% if g.user %}
+    <div class="global-fab" onclick="openGlobalLogModal()" title="Quick Log Report">
+        <i class="fas fa-clipboard-list"></i>
+    </div>
+    {% endif %}
+
+   <!-- GLOBAL LOG REPORT MODAL (UPDATED) -->
+   <div id="globalLogModal" class="modal-overlay" style="z-index: 9999;">
+    <div class="modal-box" style="width: 500px; text-align: left;">
+        <h3 style="margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+            <i class="fas fa-edit" style="color: var(--primary);"></i> New Field Report
+        </h3>
+        
+        <!-- 1. Farm Selector (Data from /api/farms-json) -->
+        <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Select Farm</label>
+        <select id="globalFarmSelect" class="input-std" style="margin-bottom: 15px;" onchange="loadZonesForFarm(this.value)">
+            <option value="">-- Loading Farms... --</option>
+        </select>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div>
+                <!-- 2. Zone Selector (Dynamic based on Farm) -->
+                <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Zone / View</label>
+                <select id="globalZoneSelect" class="input-std">
+                    <option value="">-- Select Farm First --</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Issue Type</label>
+                <input type="text" id="globalIssue" class="input-std" placeholder="e.g. Pests">
+            </div>
+        </div>
+
+        <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Affected Plant / Details</label>
+        <input type="text" id="globalPlantName" class="input-std" placeholder="e.g. Tomato Row 3">
+
+        <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Remarks</label>
+        <textarea id="globalRemarks" class="input-std" style="height: 80px;" placeholder="Describe observation..."></textarea>
+
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button onclick="submitGlobalLog()" class="btn btn-primary" style="flex: 1;">Save Report</button>
+            <button onclick="document.getElementById('globalLogModal').style.display='none'" class="btn btn-secondary" style="flex: 1;">Cancel</button>
+        </div>
+    </div>
+</div>
 
     <!-- ROLE SWITCH MODAL -->
     <div id="roleModal" class="modal-overlay">
@@ -137,24 +190,153 @@
                 else alert("Invalid Password");
             } catch(e) { console.error(e); }
         }
-            document.addEventListener('DOMContentLoaded', function() {
+
+     
         
+         async function openGlobalLogModal() {
+        document.getElementById('globalLogModal').style.display = 'flex';
+        const select = document.getElementById('globalFarmSelect');
+        const remarksField = document.getElementById('globalRemarks');
+        const contextDiv = document.getElementById('page-context');
 
- 
-        const mfaInputs = document.querySelectorAll('#mfaInput, input[name="mfa_token"]');
-        mfaInputs.forEach(input => {
-            input.addEventListener('input', function(e) {
-                let v = this.value.replace(/\D/g, ''); // Digits only
-                if (v.length > 6) v = v.slice(0, 6); // Max 6 digits
+        // 1. Fetch Farms
+        try {
+            const res = await fetch('/api/farms-json');
+            const farms = await res.json();
+            
+            select.innerHTML = '<option value="">-- Select Farm --</option>';
+            
+            // 2. Determine Current Context
+            let activeFarmId = null;
+            let activeZoneInfo = "";
 
-                if (v.length > 3) {
-                    this.value = `${v.slice(0, 3)} ${v.slice(3)}`;
-                } else {
-                    this.value = v;
+            if (contextDiv) {
+                activeFarmId = contextDiv.getAttribute('data-farm-id');
+                const farmName = contextDiv.getAttribute('data-farm-name');
+                const zoneName = contextDiv.getAttribute('data-zone-name'); // "Master Overview" or Unit Name
+                
+                if (zoneName) {
+                    activeZoneInfo = `[Context: ${farmName} - ${zoneName}] `;
                 }
+            }
+
+            // 3. Populate Dropdown & Auto-Select
+            farms.forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f.id;
+                opt.innerText = f.name + " (" + f.number + ")";
+                
+                if (activeFarmId && parseInt(f.id) === parseInt(activeFarmId)) {
+                    opt.selected = true;
+                }
+                select.appendChild(opt);
             });
+
+            // 4. Trigger Zone Load if Farm is pre-selected
+            if (activeFarmId) {
+                await loadZonesForFarm(activeFarmId);
+                // Optional: You could auto-select the zone if you passed a zone ID
+            }
+
+            // 5. Pre-fill Remarks with Context (Note of where report was logged)
+            if (activeZoneInfo) {
+                // Only append if not already there to avoid duplicates on re-open
+                if(!remarksField.value.includes("Context:")) {
+                    remarksField.value = activeZoneInfo + remarksField.value;
+                }
+            }
+
+        } catch(e) { console.error("Error loading farms:", e); }
+    }
+
+        async function loadZonesForFarm(farmId) {
+            const zoneSelect = document.getElementById('globalZoneSelect');
+            if(!farmId) {
+                zoneSelect.innerHTML = '<option value="">-- Select Farm First --</option>';
+                return;
+            }
+
+            zoneSelect.innerHTML = '<option value="">Loading Zones...</option>';
+
+            try {
+                const res = await fetch(`/api/farms/${farmId}/zones`);
+                const zones = await res.json();
+                
+                zoneSelect.innerHTML = '<option value="General">General Area</option>';
+                zones.forEach(z => {
+                    const opt = document.createElement('option');
+                    opt.value = z.name;
+                    opt.innerText = z.name;
+                    zoneSelect.appendChild(opt);
+                });
+            } catch(e) { console.error("Error loading zones:", e); }
+        }
+ 
+
+async function submitGlobalLog() {
+    const farmId = document.getElementById('globalFarmSelect').value;
+    const zone = document.getElementById('globalZoneSelect').value;
+    const issue = document.getElementById('globalIssue').value;
+    const plant = document.getElementById('globalPlantName').value;
+    const remarks = document.getElementById('globalRemarks').value;
+
+    if(!farmId || !issue) {
+        alert("Please select a farm and define the issue.");
+        return;
+    }
+
+    const form = new FormData();
+    form.append('issue', issue);
+    form.append('category', 'General'); 
+    form.append('severity', 'Low');
+    form.append('remarks', remarks + ` [Zone: ${zone}, Plant: ${plant}]`);
+    
+    try {
+        const res = await fetch(`/plantation/${farmId}/log/add`, {
+            method: 'POST',
+            body: form
         });
-    });
+
+        if(res.ok || res.redirected) {
+            // 1. Close Modal
+            document.getElementById('globalLogModal').style.display = 'none';
+            
+            // 2. Clear Inputs
+            document.getElementById('globalPlantName').value = '';
+            document.getElementById('globalIssue').value = '';
+            document.getElementById('globalRemarks').value = '';
+
+            // 3. Show Non-Blocking Success Notification
+            const flashContainer = document.getElementById('flashContainer');
+            if(flashContainer) {
+                flashContainer.style.display = 'block';
+                const msg = document.createElement('div');
+                msg.className = 'flash-msg flash-success';
+                msg.innerHTML = '<i class="fas fa-check-circle"></i> <span>Log saved to registry.</span>';
+                flashContainer.appendChild(msg);
+                
+                // Remove after 3 seconds
+                setTimeout(() => msg.remove(), 3000);
+            }
+            
+    
+            const terminalFeed = document.getElementById('terminalFeed');
+            if(terminalFeed) {
+                var entry = document.createElement('div');
+                entry.className = 'log-line';
+                entry.style.borderLeft = '3px solid var(--success)';
+                const now = new Date().toLocaleTimeString();
+                entry.innerHTML = `<span class="log-time">[${now}]</span> <span style="color:var(--success); font-weight:bold;">NEW ENTRY</span> | ${issue} (${plant})`;
+                terminalFeed.prepend(entry);
+            }
+            
+        } else {
+            alert("Failed to save report.");
+        }
+    } catch(e) { console.error(e); }
+}
+
+
     </script>
     {% block scripts %}{% endblock %}
 </body>

@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block title %}{{ farm.name }} - Command Hub{% endblock %}
+
+{% block content %}
+<div id="page-context" 
+     data-farm-id="{{ farm.id }}" 
+     data-farm-name="{{ farm.name }}"
+     data-zone-name="Master Overview">
+</div>
+<div class="farm-command-container">
+    
+    <!-- PHASE 1: OVERHEAD MASTER VIEW (Top 45%) -->
+    <div class="master-overhead-section">
+        
+        <!-- The Live Video Container -->
+        <div class="master-video-wrapper">
+            <img src="{{ url_for('video_feed') }}" class="master-live-stream" onerror="this.style.display='none'; document.getElementById('masterStatic').style.display='block';">
+            <img id="masterStatic" src="{{ url_for('static', filename='images/farm1.jpg') }}" class="master-live-stream" style="display:none; opacity:0.4;">
+            
+            <!-- TOP OVERLAY: TITLE & LOG NOTE -->
+            <div class="master-ui-top">
+                <div class="title-block">
+                    <a href="{{ url_for('home') }}" class="back-link"><i class="fas fa-chevron-left"></i> Dashboard</a>
+                    <h1>{{ farm.name }} <span class="light">Command</span></h1>
+                </div>
+                
+                <div class="action-block">
+                  
+                <div class="global-selector-wrap">
+                    <label>TARGET CROP</label>
+                    <form action="{{ url_for('set_global_crop', farm_id=farm.id) }}" method="POST">
+                        <select name="global_crop_id" onchange="this.form.submit()" class="master-dropdown">
+                            <!-- If no crop is set, show placeholder, otherwise hide placeholder -->
+                            {% if not farm.global_crop_id %}
+                                <option value="" disabled selected>Select Plantation Target</option>
+                            {% endif %}
+                            
+                            {% for c in crops %}
+                                <option value="{{ c.id }}" {% if farm.global_crop_id|string == c.id|string %}selected{% endif %}>
+                                {{ c.crop_name|upper }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </form>
+              
+                    <div class="logs-dropdown">
+                        <button class="btn-recent-logs">
+                            <i class="fas fa-history"></i> Recent Activity <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="logs-dropdown-content">
+                            <div class="logs-header">Latest Reports</div>
+                            <div class="logs-scroll">
+                                {% for log in logs[:5] %}
+                                <div class="log-item-small">
+                                    <div class="log-meta">
+                                        <span class="log-date">{{ log.entry_time }}</span>
+                                        <span class="log-reporter">{{ log.reporter_name }}</span>
+                                    </div>
+                                    <div class="log-issue">{{ log.issue }}</div>
+                                    <div class="log-remarks">"{{ log.remarks }}"</div>
+                                </div>
+                                {% else %}
+                                <div class="log-item-small" style="text-align:center; color:#aaa;">
+                                    No recent reports.
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            </div>
+
+            <!-- BOTTOM OVERLAY: TELEMETRY HUD -->
+            <div class="master-ui-bottom">
+                <div class="hud-box">
+                    <small>CONNECTED UNITS</small>
+                    <div class="hud-val">{{ units|length }}</div>
+                </div>
+             
+                <div class="hud-box">
+                    <small>WEATHER</small>
+                    <div class="hud-val"><i class="fas fa-cloud-sun"></i> 24°C</div>
+                </div>
+                <div class="hud-box">
+                    <small>SYSTEM HEALTH</small>
+                    <div class="hud-val" style="color: #2ecc71">100%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+ 
+    <div class="incident-ticker-bar">
+        <div class="ticker-label">LATEST INCIDENTS:</div>
+        <div class="ticker-content">
+            <marquee scrollamount="6">
+                {% for log in logs %}
+                    <span class="ticker-item">
+                        <i class="fas fa-exclamation-triangle" style="color: #e74c3c;"></i> 
+                        [{{ log.entry_time }}] {{ log.issue }} — Reported by {{ log.reporter_name }}
+                    </span>
+                {% else %}
+                    <span class="ticker-item" style="opacity: 0.5;">No active incidents reported in the last 24 hours.</span>
+                {% endfor %}
+            </marquee>
+        </div>
+    </div>
+
+    <!-- PHASE 3: PLANTATION SECTOR GRID (Bottom 50%) -->
+    <div class="plantation-grid-section">
+        <div class="grid-controls">
+            <h2>Plantation Sectors</h2>
+            <div class="grid-actions">
+                <input type="text" id="sectorFilter" placeholder="Filter units..." class="grid-search">
+ 
+            </div>
+        </div>
+
+        <div class="unit-grid-container" id="unitGrid">
+            <!-- New Plantation Card -->
+            <div class="unit-card add-new-unit" onclick="document.getElementById('addUnitModal').style.display='flex'">
+                <div class="add-circle"><i class="fas fa-plus"></i></div>
+                <span>New Plantation</span>
+            </div>
+
+            {% for unit in units %}
+            <a href="{{ url_for('view_plantation', farm_id=farm.id, zone_id=unit.id) }}" class="unit-card" data-name="{{ unit.name|lower }}">
+                <div class="unit-card-header">
+                    <span class="unit-name">{{ unit.name }}</span>
+                    <div class="status-dot {{ 'override' if unit.crop_id else '' }}"></div>
+                </div>
+                <div class="unit-card-body">
+                    <img src="{{ url_for('static', filename='images/farm' ~ (loop.index % 5 + 1) ~ '.jpg') }}">
+                    <div class="hover-overlay"><i class="fas fa-expand"></i> OPEN FEED</div>
+                </div>
+                <div class="unit-card-footer">
+                    <span class="signal-text">LIVE SIGNAL</span>
+                    <span class="id-text">CAM-0{{ loop.index }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .action-block {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 15px;  
+        z-index: 10;
+    }
+   
+    .farm-command-container {
+        width: 100vw; 
+        margin-left: calc(-50vw + 50%); 
+        margin-right: calc(-50vw + 50%); 
+     
+        height: calc(100vh - 70px);
+        display: flex;
+        flex-direction: column;
+        background: #0b0f19;
+        overflow: hidden;
+    }
+
+    /* TOP VIDEO SECTION */
+    .master-overhead-section { 
+        height: 45%; 
+        background: #000; 
+        position: relative;
+        overflow: hidden;  
+    }
+    .master-video-wrapper { width: 100%; height: 100%; position: relative; }
+    .master-live-stream { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; }
+
+    /* HUD ELEMENTS */
+    .master-ui-top { position: absolute; top:0; left:0; width:100%; padding:20px; display:flex; justify-content:space-between; align-items:flex-start; z-index: 5; }
+    .master-ui-bottom { position: absolute; bottom:20px; left:20px; display:flex; gap:15px; z-index: 5; }
+    
+    .hud-box { background: rgba(0,0,0,0.6); backdrop-filter: blur(10px); padding:10px 20px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); color: white; min-width: 130px; }
+    .hud-box small { font-size: 0.6rem; letter-spacing: 1px; color: #94a3b8; }
+    .hud-val { font-size: 1.2rem; font-weight: bold; margin-top: 3px; }
+
+    .btn-log-note { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-log-note:hover { background: var(--primary); color: #1a3d2e; }
+
+    /* GLOBAL SELECTOR */
+    .global-selector-wrap {
+        margin-right: 0; /* Remove old margin */
+        text-align: right;
+        width: 100%;
+    }
+    .global-selector-wrap label { font-size: 0.6rem; color: var(--primary); font-weight: bold; display: block; margin-bottom: 5px; }
+    .master-dropdown { background: rgba(0,0,0,0.5); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 5px 12px; border-radius: 4px; outline: none; }
+
+    /* TICKER BAR */
+    .incident-ticker-bar { background: #161b28; border-top: 1px solid #2d3748; border-bottom: 1px solid #2d3748; height: 45px; display: flex; align-items: center; color: white; overflow: hidden; }
+    .ticker-label { background: #1e293b; padding: 0 20px; height: 100%; display: flex; align-items: center; font-weight: bold; font-size: 0.75rem; color: var(--primary); border-right: 1px solid #2d3748; }
+    .ticker-content { flex: 1; font-size: 0.85rem; }
+    .ticker-item { margin-right: 50px; font-family: 'Inter', sans-serif; }
+
+    /* GRID SECTION */
+    .plantation-grid-section { flex: 1; background: #f8fafc; padding: 25px; display: flex; flex-direction: column; overflow: hidden; }
+    .grid-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .grid-controls h2 { color: #1e293b; font-size: 1.4rem; }
+    .unit-grid-container { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+
+    /* UNIT CARDS */
+    .unit-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; display: flex; flex-direction: column; cursor: pointer; text-decoration: none; transition: 0.3s; }
+    .unit-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1); border-color: var(--primary); }
+    .unit-card-header { padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; }
+    .unit-name { font-weight: bold; color: #334155; }
+    .status-dot { width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; box-shadow: 0 0 5px #2ecc71; }
+    .status-dot.override { background: #f1c40f; box-shadow: 0 0 5px #f1c40f; }
+    .unit-card-body { height: 130px; position: relative; background: #000; }
+    .unit-card-body img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+    .unit-card-footer {
+        padding: 10px 15px;
+        background: #f8fafc;
+        display: flex;
+        justify-content: space-between;
+        
+     
+        align-items: center; 
+        
+        font-size: 0.7rem;
+        color: #94a3b8;
+        
+       
+        line-height: 1; 
+    }
+    .signal-text {
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        display: inline-block;
+    }
+
+    .add-new-unit { border: 2px dashed #cbd5e1; background: #f1f5f9; justify-content: center; align-items: center; color: #64748b; height: 210px; }
+    .add-circle { width: 50px; height: 50px; border-radius: 50%; background: #e2e8f0; display: grid; place-items: center; font-size: 1.2rem; margin-bottom: 10px; }
+    .add-new-unit:hover { background: white; border-color: var(--primary); color: var(--primary); }
+    .add-new-unit:hover .add-circle { background: var(--primary); color: white; }
+      .logs-dropdown { position: relative; display: inline-block; }
+    .btn-recent-logs {
+        background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+        color: white; padding: 8px 16px; border-radius: 6px; 
+        font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;
+        backdrop-filter: blur(4px); transition: 0.2s;
+    }
+    .btn-recent-logs:hover { background: var(--primary); color: #1a3d2e; border-color: var(--primary); }
+    
+    .logs-dropdown-content {
+        display: none; position: absolute; right: 0; top: 110%;
+        background: white; min-width: 320px; border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 100; overflow: hidden;
+    }
+    .logs-dropdown:hover .logs-dropdown-content { display: block; }
+    
+    .logs-header { background: #f1f5f9; padding: 10px 15px; font-weight: bold; color: #475569; font-size: 0.8rem; border-bottom: 1px solid #e2e8f0; }
+    .logs-scroll { max-height: 300px; overflow-y: auto; }
+    .log-item-small { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; }
+    .log-item-small:last-child { border-bottom: none; }
+    .log-meta { display: flex; justify-content: space-between; font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px; }
+    .log-issue { font-weight: bold; color: #e74c3c; font-size: 0.9rem; }
+    .log-remarks { font-style: italic; color: #64748b; font-size: 0.8rem; margin-top: 2px; }
+</style>
+<script>
+    document.getElementById('sectorFilter').addEventListener('keyup', function(e) {
+        const term = e.target.value.toLowerCase();
+        document.querySelectorAll('.unit-card:not(.add-new-unit)').forEach(card => {
+            const name = card.getAttribute('data-name');
+            card.style.display = name.includes(term) ? 'flex' : 'none';
+        });
+    });
+</script>
+{% endblock %}

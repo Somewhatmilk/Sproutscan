@@ -50,6 +50,86 @@ ul { list-style: none; }
 .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
 .hidden { display: none !important; }
 
+
+.crop-cards-container {
+    display: flex; gap: 30px; align-items: stretch;
+    margin-top: 30px;
+}
+.crop-card-large {
+    flex: 1; height: 500px; border-radius: 24px; position: relative;
+    overflow: hidden; box-shadow: var(--shadow-hover);
+    border: 4px solid var(--primary); /* Gold border for styling */
+}
+.crop-card-large img {
+    width: 100%; height: 100%; object-fit: cover;
+    filter: brightness(0.7); transition: 0.3s;
+}
+.crop-card-large:hover img { filter: brightness(0.5); transform: scale(1.05); }
+
+/* The "Pill" Button inside cards */
+.crop-btn-overlay {
+    position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: var(--primary); color: #1a3d2e; font-weight: 800;
+    padding: 15px 30px; border-radius: 50px; font-size: 1.2rem;
+    white-space: nowrap; box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    z-index: 2; transition: 0.2s;
+}
+.crop-btn-overlay:hover { background: #fff; transform: translateX(-50%) scale(1.05); }
+
+/* The Central Search Bar (Adapted from cropstage header) */
+.crop-header-section {
+    text-align: center; margin-bottom: 40px;
+}
+.crop-searchbar {
+    position: relative; max-width: 800px; margin: 0 auto;
+    background: #729c76; /* Muted Green from designs */
+    padding: 20px 30px; border-radius: 50px;
+    display: flex; align-items: center; box-shadow: var(--shadow);
+}
+.crop-searchbar input {
+    width: 100%; background: transparent; border: none; outline: none;
+    color: white; font-size: 1.5rem; font-weight: 600; text-transform: uppercase;
+}
+.crop-searchbar input::placeholder { color: rgba(255,255,255,0.7); }
+
+/* Crop Accordion List (Adapted from viewcrops styles) */
+.crop-accordion-item {
+    background: #1b3e25; /* Darker Green */
+    margin-bottom: 15px; border-radius: 16px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+.crop-accordion-header {
+    padding: 20px 30px; cursor: pointer; display: flex; align-items: center;
+    justify-content: space-between; font-size: 1.5rem; font-weight: 700;
+    background: rgba(0,0,0,0.2); transition: 0.2s;
+}
+.crop-accordion-header:hover { background: rgba(0,0,0,0.4); }
+.crop-accordion-content {
+    padding: 30px; background: rgba(0,0,0,0.1);
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Progress Bar (Ported) */
+.stage-progress-bar {
+    width: 100%; height: 12px; background: rgba(255,255,255,0.1);
+    border-radius: 20px; margin-top: 15px; overflow: hidden;
+}
+.stage-progress-fill {
+    height: 100%; width: 0%; background: var(--primary); /* Gold */
+    border-radius: 20px; transition: width 0.5s ease;
+}
+
+/* Form Styles for Add Crop */
+.crop-form-box {
+    background: #729c76; padding: 15px 25px; border-radius: 50px; margin-bottom: 20px;
+}
+.crop-form-box input, .crop-form-box select, .crop-form-box textarea {
+    width: 100%; background: transparent; border: none; color: white;
+    font-size: 1.1rem; font-weight: 600; outline: none; font-family: var(--font-main);
+}
+.crop-form-box textarea { min-height: 100px; border-radius: 20px; }
+.crop-form-box select option { background: #283728; color: white; }
+
 /* =========================================
    3. NAVBAR (Restored Original Look)
    ========================================= */
@@ -204,6 +284,124 @@ input:checked + .slider .slider-knob { transform: translateX(14px); }
 
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 
+
+.pest-log-container {
+    max-width: 1400px; margin: 0 auto; padding: 2rem;
+}
+
+.pest-greeting {
+    font-size: 2.5rem; font-weight: bold; margin-bottom: 2rem; color: var(--text-main);
+    text-transform: uppercase;
+}
+
+/* Custom Search Input for this module */
+.pest-search-box {
+    position: relative; margin-bottom: 2rem;
+}
+.pest-search-input {
+    width: 100%; padding: 1rem 4rem 1rem 1.5rem;
+    border-radius: 50px; border: none;
+    background-color: #5a7a6a; color: white;
+    font-size: 1.1rem; outline: none;
+}
+.pest-search-input::placeholder { color: rgba(255,255,255,0.6); }
+
+/* Table Styling matching the new UI */
+.pest-table-header {
+    display: grid; grid-template-columns: 80px 1fr 180px 1fr;
+    gap: 1rem; padding: 1.5rem;
+    background: #4a6554; border-radius: 12px 12px 0 0;
+    font-weight: bold; text-transform: uppercase; color: white;
+}
+
+.pest-table-row {
+    display: grid; grid-template-columns: 80px 1fr 180px 1fr;
+    gap: 1rem; padding: 1.5rem;
+    background: #3a5a4a; border-top: 1px solid rgba(255,255,255,0.1);
+    align-items: center; color: rgba(255,255,255,0.9);
+}
+.pest-table-row:last-child { border-radius: 0 0 12px 12px; }
+
+/* Action Buttons specific to this module */
+.btn-pest-action {
+    padding: 8px 16px; border-radius: 6px; font-weight: bold; border: none;
+    cursor: pointer; transition: 0.2s; color: white; font-size: 0.8rem;
+}
+.btn-pest-add { background: #4a8a5a; }
+.btn-pest-view { background: #7a9a8a; }
+.btn-pest-del { background: #c44536; }
+
+/* Plantation Sections (Entries View) */
+.plantation-section {
+    background: #2d453b; border-radius: 12px; margin-bottom: 20px; overflow: hidden;
+}
+.plantation-header {
+    padding: 15px 25px; font-size: 1.2rem; font-weight: bold;
+    background: rgba(0,0,0,0.2); color: #81c784;
+}
+.entries-grid-header {
+    display: grid; grid-template-columns: 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr 0.8fr 1fr;
+    padding: 10px 20px; font-size: 0.8rem; font-weight: bold; color: #aaa;
+    background: rgba(0,0,0,0.1);
+}
+.entries-grid-row {
+    display: grid; grid-template-columns: 1.5fr 1fr 1.5fr 1fr 1fr 1.5fr 0.8fr 1fr;
+    padding: 15px 20px; border-top: 1px solid rgba(255,255,255,0.05);
+    font-size: 0.9rem; align-items: center;
+}
+
+/* GLOBAL FAB */
+.global-fab {
+    position: fixed; 
+    bottom: 30px; 
+    right: 30px; 
+    width: 65px; 
+    height: 65px; 
+    background: var(--primary); 
+    border-radius: 50%; 
+    display: grid; 
+    place-items: center; 
+    color: white; 
+    font-size: 1.8rem; 
+    cursor: pointer; 
+    box-shadow: 0 10px 25px rgba(212, 165, 116, 0.4); 
+    z-index: 9000;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.global-fab:hover {
+    transform: scale(1.1);
+    background: var(--primary-hover);
+}
+
+/* FAB */
+.pest-fab {
+    position: fixed; bottom: 30px; right: 30px;
+    width: 60px; height: 60px; background: #4a8a5a;
+    border-radius: 50%; display: grid; place-items: center;
+    color: white; font-size: 2rem; cursor: pointer;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 1000;
+}
+.pest-fab:hover { transform: scale(1.1); background: #5a9a6a; }
+
+/* Custom Modal for this module */
+.pest-modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8); z-index: 2000;
+    display: none; align-items: center; justify-content: center;
+}
+.pest-modal.active { display: flex; }
+.pest-modal-box {
+    background: #3a5a4a; width: 600px; padding: 30px;
+    border-radius: 16px; color: white;
+}
+
+/* Dropdown inside dark modal */
+.pest-modal select, .pest-modal input, .pest-modal textarea {
+    width: 100%; padding: 10px; margin-bottom: 15px;
+    background: #2d453b; border: 1px solid #4a6554;
+    color: white; border-radius: 6px;
+}
 
    .glass-pill {
         position: absolute;
@@ -804,3 +1002,535 @@ tr:hover { background: #fdfbf7; transition: 0.2s; }
         display: none; padding: 20px; border-bottom: 1px solid #f0f0f0;
         background: #fffbf4;
     }
+
+
+    .crop-list-container {
+    background: #1b3e25; /* Dark Green from Image 2 */
+    border-radius: 20px;
+    padding: 30px;
+    margin: 20px auto;
+    max-width: 1200px;
+}
+
+.crop-item-box {
+    background: #278d49; /* Brighter Green from Image 2 */
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-left: 5px solid #f5d062; /* Yellow highlight */
+}
+
+.crop-list {
+  width: 100%;
+  max-width: 1200px;        
+  margin: 30px auto;       
+  background-color: #1b3e25; /* Deep Green Background */
+  border-radius: 20px;
+  padding: 14px 18px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.crop-item + .crop-item {
+  border-top: 3px solid rgba(255, 255, 255, 0.20);
+}
+
+/* Accordion Header */
+.crop-header::-webkit-details-marker { display: none; }
+
+.crop-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;             
+  padding: 18px 28px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 24px; /* Adjusted for better fit */
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #f8f8f8;
+}
+
+.crop-header:hover {
+  background: rgba(255,255,255,0.05);
+  border-radius: 12px;
+}
+
+.arrow {
+  font-size: 30px;
+  transition: transform 180ms ease;
+  opacity: 0.9;
+}
+
+details[open] .arrow {
+  transform: rotate(180deg);
+}
+
+/* Expanded Panel */
+.crop-panel {
+  padding: 30px 36px 34px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0,0,0,0.2); /* Slight darken for contrast */
+  border-radius: 0 0 12px 12px;
+}
+
+.crop-panel h3 {
+  margin: 0 0 18px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #a3cfbb;
+}
+
+.stage { font-weight: 900; color: #fff; }
+
+.crop-panel p {
+  margin: 0 0 22px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.8);
+}
+
+/* Status Pills */
+.status-box {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.status-box .status, .status-box .confidence {
+  background-color: #729c76;
+  border-radius: 50px;
+  padding: 12px 24px;
+  font-weight: 800;
+  font-size: 16px;
+  text-transform: uppercase;
+  color: white;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.status-box .confidence {
+  background-color: #5a7a6a; /* Slightly darker for contrast */
+}
+
+/* Actions & Inputs */
+.delete {
+  background-color: #c0392b; /* Red for delete */
+  border-radius: 50px;
+  padding: 10px 20px;
+  font-weight: 800;
+  font-size: 14px;
+  text-transform: uppercase;
+  color: #f8f8f8;
+  border: none;
+  cursor: pointer;
+  margin-left: auto;
+  transition: 0.2s;
+}
+.delete:hover { background-color: #e74c3c; transform: scale(1.05); }
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 20px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #f5d062; /* Gold */
+  border-radius: 20px;
+  transition: width 0.8s ease-in-out;
+}
+
+.stage-select {
+  color: darkgoldenrod;
+  background-color: rgba(255,255,255,0.1);
+  font-size: 1rem;
+  border-radius: 8px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255,255,255,0.3);
+  margin-bottom: 15px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.stage-label-big {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: white;
+    text-transform: uppercase;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.metric-box {
+    background: rgba(255,255,255,0.05);
+    padding: 10px;
+    border-radius: 10px;
+    text-align: center;
+}
+.metric-val {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #f5d062; /* Gold */
+}
+.metric-lbl {
+    font-size: 0.65rem;
+    color: #bdc3c7;
+    text-transform: uppercase;
+}
+
+.progress-container {
+    margin-bottom: 20px;
+}
+.progress-track {
+    background: rgba(255,255,255,0.1);
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f1c40f, #2ecc71);
+    width: 0%;
+    transition: width 1s ease;
+}
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    margin-top: 5px;
+    color: #bdc3c7;
+}
+
+.ai-footer {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.ai-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    background: #34495e;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+/* Dynamic classes applied by JS */
+.ai-badge.good { background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
+.ai-badge.bad  { background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
+.ai-badge.warn { background: rgba(241, 196, 15, 0.2); color: #f1c40f; border: 1px solid #f1c40f; }
+
+.status-pill-row {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 15px;
+}
+
+.pill-green-glass {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    padding: 8px 18px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.report-form-card {
+    background: var(--bg-card); /* Cream card */
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 40px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    color: var(--text-dark);
+}
+
+.report-form-card h1 {
+    color: var(--secondary);
+    font-weight: 800;
+    margin-bottom: 20px;
+    border-bottom: 3px solid var(--primary);
+    display: inline-block;
+}
+
+/* Quill Editor Styling - Integrated with AgriScan Colors */
+.quill-wrapper {
+    background: white;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.quill-wrapper.focused {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.2);
+}
+
+.ql-toolbar.ql-snow {
+    border: none !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    background: #f8fafc;
+}
+
+.ql-container.ql-snow {
+    border: none !important;
+    min-height: 200px;
+    font-family: var(--font-main) !important;
+}
+
+/* Table Expansion Logic (The Arrow thing) */
+.expandable-cell {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    max-width: 300px;
+}
+
+.content-preview {
+    flex: 1;
+    max-height: 1.6em; /* single line */
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+}
+
+.expandable-cell.expanded .content-preview {
+    max-height: 1000px;
+}
+
+.expand-btn {
+    background: #f1f5f9;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 10px;
+    padding: 2px 6px;
+    color: var(--secondary);
+}
+
+.nav-links a[href*="reports/create"] {
+    font-weight: 700;
+    transition: 0.3s;
+}
+
+.nav-links a[href*="reports/create"]:hover {
+    color: #ff9f43 !important; /* Soft Orange */
+    text-shadow: 0 0 10px rgba(255, 159, 67, 0.4);
+}
+
+/* Ensure the bug icon pulses slightly to grab attention */
+.nav-links a[href*="reports/create"] i {
+    animation: bugPulse 2s infinite;
+}
+
+@keyframes bugPulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+/* PDF Export Cleanup */
+.pdf-export { background: white !important; color: black !important; padding: 20px; }
+.pdf-export .btn, .pdf-export .expand-btn, .pdf-export .navbar { display: none !important; }
+
+/* =========================================
+   12. NEW FARM REGISTRY (Glassmorphism UI)
+   ========================================= */
+
+/* Hero Header with Background */
+.farm-hero-header {
+    margin-bottom: 3rem;
+    padding: 4rem 3rem;
+    border-radius: 20px;
+    background-image: 
+        linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
+        url('../images/farm3.jpg'); /* Ensure this image exists in your static folder */
+    background-size: cover;
+    background-position: center;
+    color: #fffbf4;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+
+.farm-hero-header h1 {
+    font-size: 3rem;
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.farm-hero-header p {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* Glass Search Bar */
+.glass-search-container {
+    margin-bottom: 3rem;
+    position: relative;
+}
+
+.glass-search-input {
+    width: 100%;
+    padding: 1.2rem 1.5rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 16px;
+    font-size: 1.1rem;
+    color: #283728;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transition: 0.3s;
+}
+
+.glass-search-input:focus {
+    outline: none;
+    background: #ffffff;
+    box-shadow: 0 0 0 4px rgba(212, 165, 116, 0.4); /* Gold Glow */
+}
+
+/* Grid Layout Override */
+.farms-grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+/* Glass Card Design */
+.glass-farm-card {
+    background: rgba(163, 176, 131, 0.15); /* Subtle Green Tint */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 2rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.glass-farm-card:hover {
+    transform: translateY(-8px);
+    border-color: var(--primary); /* Uses your gold variable */
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    background: rgba(163, 176, 131, 0.25);
+}
+
+/* Card Header */
+.glass-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+}
+
+.serial-badge {
+    background: var(--primary);
+    color: #1a3d2e;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.glass-card-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fffbf4;
+    margin: 10px 0 5px 0;
+}
+
+/* Weather Widget inside Card */
+.glass-weather-box {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+    padding: 1.2rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 120px;
+}
+
+.weather-row-main {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.weather-temp-big {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: white;
+}
+
+.weather-details-row {
+    display: flex;
+    gap: 15px;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Action Buttons Grid */
+.glass-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin-top: auto; /* Pushes to bottom */
+}
+
+.btn-glass {
+    border: none;
+    border-radius: 12px;
+    padding: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: 0.2s;
+    text-decoration: none;
+}
+
+.btn-glass-view { background: rgba(255,255,255,0.1); color: white; }
+.btn-glass-view:hover { background: white; color: #1a3d2e; }
+
+.btn-glass-edit { background: rgba(212, 165, 116, 0.2); color: var(--primary); }
+.btn-glass-edit:hover { background: var(--primary); color: #1a3d2e; }
+
+.btn-glass-del { background: rgba(144, 55, 65, 0.2); color: #ff6b6b; }
+.btn-glass-del:hover { background: #ff6b6b; color: white; }
+
+/* Map Modal Specific Override */
+.modal-glass-content {
+    background: #1e2b1e;
+    border: 1px solid var(--primary);
+}

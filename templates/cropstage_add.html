@@ -1,0 +1,65 @@
+ 
+{% extends "base.html" %}
+{% block title %}Add New Crop - AgriScan AI{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 800px; margin-top: 40px;">
+    
+    <div class="form-card" style="background: white; color: #333; padding: 40px; border-radius: 20px;">
+        <h1 style="color: #1b3e25; margin-bottom: 5px;">ADD A NEW CROP</h1>
+        <hr style="border: 0; border-top: 2px solid #f5d062; margin-bottom: 30px;">
+        
+        <form id="addCrops">
+            <div style="margin-bottom: 25px;">
+                <label style="font-weight: 700; display: block; margin-bottom: 8px;">Crop Name*</label>
+                <input id="cropName" type="text" class="input-std" placeholder="e.g. Cherry Tomato" required>
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <label style="font-weight: 700; display: block; margin-bottom: 8px;">Crop Category*</label>
+                <select id="category" class="input-std" required>
+                    <option value="">-- Select --</option>
+                    <option value="Vegetable">Vegetable</option>
+                    <option value="Fruit">Fruit</option>
+                    <option value="Herb">Herb</option>
+                    <option value="Grain">Grain</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 30px;">
+                <label style="font-weight: 700; display: block; margin-bottom: 8px;">Notes (Optional)</label>
+                <textarea id="notes" class="input-std" style="height: 100px;" placeholder="Specific planting notes..."></textarea>
+            </div>
+
+            <div style="display: flex; gap: 20px;">
+                <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="history.back()">CANCEL</button>
+                <button type="submit" class="btn btn-primary" style="flex: 1;">SAVE CROP</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById("addCrops").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    const payload = {
+        crop_name: document.getElementById("cropName").value,
+        category: document.getElementById("category").value,
+        notes: document.getElementById("notes").value
+    };
+
+    const res = await fetch("/api/crops", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+        window.location.href = "{{ url_for('view_list') }}";
+    } else {
+        const err = await res.json();
+        alert(err.error || "Error saving crop");
+    }
+});
+</script>
+{% endblock %}

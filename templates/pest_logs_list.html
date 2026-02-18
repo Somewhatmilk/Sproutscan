@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Pest Logs - AgriScan AI{% endblock %}
+
+{% block content %}
+<div class="registry-container">
+    
+    <div class="page-header">
+        <div>
+            <h1>Pest Logs</h1>
+            <p>Field inspection records and issue tracking</p>
+        </div>
+        <div style="display: flex; gap: 15px;">
+            <div class="search-wrap">
+                <input type="text" id="logSearch" class="search-input" placeholder="Search logs...">
+                <i class="fas fa-search search-icon"></i>
+            </div>
+            <!-- Toggle Add Folder Panel -->
+            <button onclick="document.getElementById('addFolderPanel').classList.toggle('hidden')" class="btn btn-primary btn-sm">
+                <i class="fas fa-plus"></i> New Folder
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Add Folder Panel (Hidden by default) -->
+    <div id="addFolderPanel" class="card hidden" style="margin-bottom: 20px; padding: 20px; background: #fffbf4; border: 1px solid #efeadd;">
+        <h4 style="margin-bottom: 15px; color: var(--secondary);">Create New Log Folder</h4>
+        <div style="display: flex; gap: 10px;">
+            <input type="text" id="newFolderName" class="input-std" placeholder="Folder Name (e.g. Harvest Season Q1)" style="margin-bottom: 0;">
+            <button onclick="createFolder()" class="btn btn-primary">Create</button>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID #</th>
+                    <th>Folder / Farm Name</th>
+                    <th>Date Created</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="folderTableBody">
+                {% for folder in folders %}
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <!-- 1. ID -->
+                    <td style="padding: 18px; font-family: monospace; font-weight: 600; color: #64748b;">
+                        {{ folder.number }}
+                    </td>
+                    
+                    <!-- 2. Name -->
+                    <td style="padding: 18px;">
+                        <div style="font-weight: 600; color: #334155;">{{ folder.name }}</div>
+                    </td>
+
+                    <!-- 3. Date -->
+                    <td style="padding: 18px; color: #64748b;">
+                        {{ folder.date_obj.strftime('%d/%m/%Y') if folder.date_obj else folder.date_created }}
+                    </td>
+
+                    <!-- 4. Status (Static for now, could be dynamic) -->
+                    <td style="padding: 18px;">
+                        <span class="meta-tag" style="background: #e0f2fe; color: #0369a1;">
+                            ACTIVE
+                        </span>
+                    </td>
+                    
+                    <!-- 5. Actions -->
+                    <td style="padding: 18px; text-align: right;">
+                        <a href="{{ url_for('view_pest_log_entries', folder_id=folder.id) }}" class="btn-action btn-view">
+                            View Entries
+                        </a>
+                        <button onclick="deleteFolder({{ folder.id }})" class="btn-action btn-delete" title="Delete Folder">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" style="text-align:center; padding: 40px;">No logs found. Create a new folder to begin.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // 1. Search Logic
+    document.getElementById('logSearch').addEventListener('keyup', function(e) {
+        const term = e.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#folderTableBody tr');
+        
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(term) ? '' : 'none';
+        });
+    });
+
+    // 2. Create Folder Logic
+    async function createFolder() {
+        const name = document.getElementById('newFolderName').value;
+        if(!name) return alert("Please enter a name");
+        
+        const res = await fetch('/pest-logs/folder/new', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: name})
+        });
+        
+        if(res.ok) location.reload();
+        else alert("Error creating folder");
+    }
+
+   
+    async function deleteFolder(id) {
+        if(confirm("Are you sure? This will delete all entries in this folder.")) {
+            const res = await fetch(`/pest-logs/folder/${id}/delete`, {method:'POST'});
+            if(res.ok) location.reload();
+        }
+    }
+</script>
+{% endblock %}

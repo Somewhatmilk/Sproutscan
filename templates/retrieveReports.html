@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Error Logs - AgriScan AI{% endblock %}
+
+{% block content %}
+<div class="registry-container">
+    <div class="page-header">
+        <div>
+            <h1>Technical Error Registry</h1>
+            <p>Historical logs of system malfunctions and repairs</p>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="downloadPDF()">
+            <i class="fas fa-file-pdf"></i> EXPORT PDF
+        </button>
+    </div>
+
+    <div class="table-card" id="reportContent">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Staff</th>
+                    <th>Category</th>
+                    <th>Issue Description</th>
+                    <th>Date</th>
+                    <th style="text-align: right;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in reports_list %}
+                <tr>
+                    <td style="font-family: monospace;">#{{ report.id }}</td>
+                    <td style="font-weight: 600;">{{ report.staff_name }}</td>
+                    <td>
+                        <span class="meta-tag">{{ 'Hardware' if report.category == 'H' else 'Software' if report.category == 'S' else 'Network' }}</span>
+                    </td>
+                    <td>
+                        <div class="expandable-cell">
+                            <div class="content-preview">{{ report.description|safe }}</div>
+                            <button class="expand-btn" onclick="this.parentElement.classList.toggle('expanded')">▼</button>
+                        </div>
+                    </td>
+                    <td class="text-muted">{{ report.created_at }}</td>
+                    <td style="text-align: right;">
+                        <a href="{{ url_for('update_report', id=report.id) }}" class="btn-action btn-view"><i class="fas fa-edit"></i></a>
+                        <form action="{{ url_for('delete_report', id=report.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="btn-action btn-delete" onclick="return confirm('Delete permanently?')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+    function downloadPDF() {
+        const element = document.getElementById("reportContent");
+        element.classList.add("pdf-export");
+        html2pdf().from(element).save().then(() => element.classList.remove("pdf-export"));
+    }
+</script>
+{% endblock %}
