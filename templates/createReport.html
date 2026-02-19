@@ -24,13 +24,26 @@
 
             <div class="form-group mb-4">
                 <label>Detailed Description *</label>
+
                 <div class="quill-wrapper" id="quillWrapper">
                     <div id="editor"></div>
                 </div>
-                <!-- Hidden input that Flask actually reads -->
-                <textarea name="description" id="hidden-description" style="display:none;"></textarea>
-                <small class="text-muted"><span id="charCount">0</span> / 1000 characters</small>
+
+                <!-- Hidden input -->
+                <textarea name="description" id="hidden-description" required
+                    style="opacity:0; height:0; position:absolute;">
+    </textarea>
+
+                <!-- Validation Message -->
+                <div class="invalid-feedback d-block" id="description-error" style="display:none;">
+                    Description is required.
+                </div>
+
+                <small class="text-muted">
+                    <span id="charCount">0</span> / 1000 characters
+                </small>
             </div>
+
 
             <div class="form-group mb-4">
                 <label>Internal Remarks (Optional)</label>
@@ -53,10 +66,45 @@
         theme: 'snow',
         modules: { toolbar: [['bold', 'italic'], [{ 'list': 'bullet' }], ['clean']] }
     });
+
     const hiddenInput = document.getElementById("hidden-description");
-    quill.on('text-change', () => {
-        hiddenInput.value = quill.root.innerHTML;
-        document.getElementById("charCount").innerText = quill.getText().trim().length;
+    const charCount = document.getElementById("charCount");
+    const wrapper = document.getElementById("quillWrapper");
+    const errorMsg = document.getElementById("description-error");
+
+    // Sync content + character limit
+    quill.on('text-change', function () {
+        let text = quill.getText().trim();
+        let length = text.length;
+
+        if (length > 1000) {
+            quill.deleteText(1000, length);
+            length = 1000;
+        }
+
+        charCount.innerText = length;
+
+        hiddenInput.value = (length === 0) ? "" : quill.root.innerHTML;
+
+        // Remove error when user types
+        if (length > 0) {
+            wrapper.classList.remove("is-invalid");
+            errorMsg.style.display = "none";
+        }
+    });
+
+    // Final validation on submit
+    document.querySelector("form").addEventListener("submit", function (e) {
+        let text = quill.getText().trim();
+
+        if (text.length === 0) {
+            hiddenInput.value = "";
+            wrapper.classList.add("is-invalid");
+            errorMsg.style.display = "block";
+            e.preventDefault();
+            return false;
+        }
     });
 </script>
+
 {% endblock %}
