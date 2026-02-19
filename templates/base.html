@@ -41,16 +41,30 @@
             </a>
         
             {% if g.user.role == 'admin' %}
-                <a href="{{ url_for('create_report') }}"
-                   class="{% if request.endpoint == 'create_report' %}active{% endif %}"
-                   style="color: #ff9f43;">
-                   <i class="fas fa-bug"></i> Report Error
+            <div class="nav-dropdown">
+                <a href="{{ url_for('retrieve_reports') }}" class="{% if request.endpoint in ['create_report','retrieve_reports'] %}active{% endif %}">
+                    <i class="fas fa-file-alt"></i>
+                    Technical Report
+                    <i class="fas fa-chevron-down" style="font-size:10px;"></i>
                 </a>
-        
-                <a href="{{ url_for('manage_users') }}"
-                   class="{% if request.endpoint == 'manage_users' %}active{% endif %}">
-                   Users
-                </a>
+
+                <div class="nav-dropdown-menu">
+                    <a href="{{ url_for('create_report') }}"
+                        class="{% if request.endpoint == 'create_report' %}active{% endif %}">
+                        Create Report
+                    </a>
+
+                    <a href="{{ url_for('retrieve_reports') }}"
+                        class="{% if request.endpoint == 'retrieve_reports' %}active{% endif %}">
+                        View Reports
+                    </a>
+                </div>
+            </div>
+
+            <a href="{{ url_for('manage_users') }}"
+                class="{% if request.endpoint == 'manage_users' %}active{% endif %}">
+                Users
+            </a>
             {% endif %}
         </div>
         

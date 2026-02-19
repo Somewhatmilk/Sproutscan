@@ -1761,3 +1761,89 @@ details[open] .arrow {
 }
 .dark-table-wrap tr:last-child td { border-bottom: none; }
 .dark-table-wrap tr:hover td { background: rgba(255,255,255,0.03); }
+
+/* ================================
+   NAVBAR DROPDOWN (Technical Report)
+================================ */
+
+/* Wrapper */
+.nav-dropdown {
+    position: relative;
+    display: inline-block;
+    padding-bottom: 5px; /* creates hover buffer zone */
+}
+
+/* Main dropdown button */
+.nav-dropdown > a {
+    margin-left: 25px;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nav-dropdown > a:hover {
+    color: var(--primary);
+}
+
+/* Dropdown Menu */
+.nav-dropdown-menu {
+    position: absolute;
+    top: 100%;   /* instead of 45px */
+    left: 0;
+    background: var(--bg-nav);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 10px 0;
+    min-width: 200px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid rgba(255,255,255,0.08);
+    display: none;
+    z-index: 2000;
+}
+
+/* Show on hover */
+.nav-dropdown:hover .nav-dropdown-menu {
+    display: block;
+}
+
+/* Dropdown Links */
+.nav-dropdown-menu a {
+    display: block;
+    padding: 10px 18px;
+    color: rgba(255,255,255,0.85);
+    font-size: 0.9rem;
+    transition: 0.2s;
+}
+
+.nav-dropdown-menu a:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--primary);
+}
+
+/* Active state */
+.nav-dropdown-menu a.active {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.pdf-export th:nth-child(6),
+.pdf-export td:nth-child(6) {
+    text-align: center;
+    white-space: nowrap;
+    width: 130px;
+}
+/* Invalid State */
+.quill-wrapper.is-invalid {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px rgba(144, 55, 65, 0.15);
+}
+
+/* Validation Message */
+.invalid-feedback {
+    font-size: 0.85rem;
+    color: var(--danger);
+    margin-top: 5px;
+}
