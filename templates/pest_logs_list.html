@@ -68,12 +68,17 @@
                     
                     <!-- 5. Actions -->
                     <td style="padding: 18px; text-align: right;">
-                        <a href="{{ url_for('view_pest_log_entries', folder_id=folder.id) }}" class="btn-action btn-view">
-                            View Entries
-                        </a>
-                        <button onclick="deleteFolder({{ folder.id }})" class="btn-action btn-delete" title="Delete Folder">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        <div style="display: inline-flex; align-items: stretch; gap: 6px;">
+                            <a href="{{ url_for('view_pest_log_entries', folder_id=folder.id) }}" class="btn-action btn-view">
+                                View Entries
+                            </a>
+                            <button class="btn-action" style="color: #64748b;" title="Edit Folder">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
+                            <button onclick="deleteFolder({{ folder.id }})" class="btn-action btn-delete" title="Delete Folder">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 {% else %}

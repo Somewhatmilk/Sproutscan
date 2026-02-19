@@ -981,8 +981,8 @@ tr:hover { background: #fdfbf7; transition: 0.2s; }
 .btn-restore { background: #dcfce7; color: #166534; }
 .btn-restore:hover { background: #166534; color: white; }
 
-.btn-delete { color: #903741; background: transparent; }
-.btn-delete:hover { background: #fee2e2; }
+.btn-delete { color: #903741; background: #fee2e2; }
+.btn-delete:hover { background: #f87171; color: white; }
 
 /* Meta Tags (e.g., Date/Status) */
 .meta-tag { 
@@ -1004,7 +1004,7 @@ tr:hover { background: #fdfbf7; transition: 0.2s; }
     background: rgba(255,255,255,0.9);
 }
 .search-input:focus { border-color: var(--primary); outline: none; background: white; }
-.search-icon { position: absolute; right: 15px; top: 12px; color: #94a3b8; }
+.search-icon { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
 
 
    .setting-row {
