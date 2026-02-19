@@ -21,6 +21,7 @@
                     <th>Staff</th>
                     <th>Category</th>
                     <th>Issue Description</th>
+                    <th>Remarks</th>
                     <th>Date</th>
                     <th style="text-align: right;">Actions</th>
                 </tr>
@@ -31,19 +32,38 @@
                     <td style="font-family: monospace;">#{{ report.id }}</td>
                     <td style="font-weight: 600;">{{ report.staff_name }}</td>
                     <td>
-                        <span class="meta-tag">{{ 'Hardware' if report.category == 'H' else 'Software' if report.category == 'S' else 'Network' }}</span>
+                        <span class="meta-tag">{{ 'Hardware' if report.category == 'H' else 'Software' if
+                            report.category == 'S' else 'Network' }}</span>
                     </td>
                     <td>
                         <div class="expandable-cell">
                             <div class="content-preview">{{ report.description|safe }}</div>
-                            <button class="expand-btn" onclick="this.parentElement.classList.toggle('expanded')">▼</button>
+                            <button class="expand-btn"
+                                onclick="this.parentElement.classList.toggle('expanded')">▼</button>
                         </div>
                     </td>
-                    <td class="text-muted">{{ report.created_at }}</td>
+
+                    <td>
+                        {% if report.remarks %}
+                        <div class="expandable-cell">
+                            <div class="content-preview">{{ report.remarks|safe }}</div>
+                            <button class="expand-btn"
+                                onclick="this.parentElement.classList.toggle('expanded')">▼</button>
+                        </div>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="text-muted">{{ report.created_at[:10] }}<br><small>{{ report.created_at[11:19] }}</small></td>
+
                     <td style="text-align: right;">
-                        <a href="{{ url_for('update_report', id=report.id) }}" class="btn-action btn-view"><i class="fas fa-edit"></i></a>
-                        <form action="{{ url_for('delete_report', id=report.id) }}" method="POST" style="display:inline;">
-                            <button type="submit" class="btn-action btn-delete" onclick="return confirm('Delete permanently?')">
+                        <a href="{{ url_for('update_report', id=report.id) }}" class="btn-action btn-view"><i
+                                class="fas fa-edit"></i></a>
+                        <form action="{{ url_for('delete_report', id=report.id) }}" method="POST"
+                            style="display:inline;">
+                            <button type="submit" class="btn-action btn-delete"
+                                onclick="return confirm('Delete permanently?')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </form>
@@ -58,9 +78,37 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script>
     function downloadPDF() {
-        const element = document.getElementById("reportContent");
-        element.classList.add("pdf-export");
-        html2pdf().from(element).save().then(() => element.classList.remove("pdf-export"));
-    }
+    const element = document.getElementById("reportContent");
+
+    // Add export class
+    element.classList.add("pdf-export");
+
+    // Expand all expandable cells
+    document.querySelectorAll(".expandable-cell").forEach(cell => {
+        cell.classList.add("expanded");
+    });
+
+    const opt = {
+        margin: 10,
+        filename: 'error_logs.pdf',
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(element).save().then(() => {
+
+        // Remove export class
+        element.classList.remove("pdf-export");
+
+        // Collapse back after export
+        document.querySelectorAll(".expandable-cell").forEach(cell => {
+            cell.classList.remove("expanded");
+        });
+    });
+}
+
 </script>
+
+
 {% endblock %}
