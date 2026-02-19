@@ -1,4 +1,3 @@
- 
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -121,45 +120,51 @@
     </div>
     {% endif %}
 
-   <!-- GLOBAL LOG REPORT MODAL (UPDATED) -->
-   <div id="globalLogModal" class="modal-overlay" style="z-index: 9999;">
-    <div class="modal-box" style="width: 500px; text-align: left;">
-        <h3 style="margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-            <i class="fas fa-edit" style="color: var(--primary);"></i> New Pest Report
-        </h3>
-        
-        <!-- 1. Farm Selector (Data from /api/farms-json) -->
-        <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Select Farm</label>
-        <select id="globalFarmSelect" class="input-std" style="margin-bottom: 15px;" onchange="loadZonesForFarm(this.value)">
-            <option value="">-- Loading Farms... --</option>
-        </select>
+    <!-- GLOBAL LOG REPORT MODAL -->
+    <div id="globalLogModal" class="modal-overlay" style="z-index: 9999;">
+        <div class="modal-box" style="width: 500px; text-align: left;">
+            <h3 style="margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                <i class="fas fa-edit" style="color: var(--primary);"></i> New Pest Log Entry
+            </h3>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div>
-                <!-- 2. Zone Selector (Dynamic based on Farm) -->
-                <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Zone / View</label>
-                <select id="globalZoneSelect" class="input-std" style="height: 47px;">
-                    <option value="">-- Select Farm First --</option>
-                </select>
+            <!-- Folder Selector (loads from /api/pest-logs/folders-json) -->
+            <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Select Farm / Log Folder</label>
+            <select id="globalFarmSelect" class="input-std" style="margin-bottom: 15px;" onchange="loadZonesForFarm(this.value)">
+                <option value="">-- Loading... --</option>
+            </select>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Zone / Plantation</label>
+                    <select id="globalZoneSelect" class="input-std" style="height: 47px;">
+                        <option value="">-- Select Above First --</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Issue Type</label>
+                    <input type="text" id="globalIssue" class="input-std" placeholder="e.g. Pests" style="height: 47px;">
+                </div>
             </div>
-            <div>
-                <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Issue Type</label>
-                <input type="text" id="globalIssue" class="input-std" placeholder="e.g. Pests" style="height: 47px;">
+
+            <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Affected Plant / Details</label>
+            <input type="text" id="globalPlantName" class="input-std" placeholder="e.g. Tomato Row 3">
+
+            <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Remarks</label>
+            <textarea id="globalRemarks" class="input-std" style="height: 80px;" placeholder="Describe observation..."></textarea>
+
+            <!-- Resolved field -->
+            <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Resolved?</label>
+            <select id="globalResolved" class="input-std" style="margin-bottom: 15px;">
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+            </select>
+
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button onclick="submitGlobalLog()" class="btn btn-primary" style="flex: 1;">Save Report</button>
+                <button onclick="document.getElementById('globalLogModal').style.display='none'" class="btn btn-secondary" style="flex: 1;">Cancel</button>
             </div>
-        </div>
-
-        <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Affected Plant / Details</label>
-        <input type="text" id="globalPlantName" class="input-std" placeholder="e.g. Tomato Row 3">
-
-        <label style="font-size: 0.85rem; font-weight: bold; color: #666;">Remarks</label>
-        <textarea id="globalRemarks" class="input-std" style="height: 80px;" placeholder="Describe observation..."></textarea>
-
-        <div style="display: flex; gap: 10px; margin-top: 10px;">
-            <button onclick="submitGlobalLog()" class="btn btn-primary" style="flex: 1;">Save Report</button>
-            <button onclick="document.getElementById('globalLogModal').style.display='none'" class="btn btn-secondary" style="flex: 1;">Cancel</button>
         </div>
     </div>
-</div>
 
     <!-- ROLE SWITCH MODAL -->
     <div id="roleModal" class="modal-overlay">
@@ -215,151 +220,159 @@
             } catch(e) { console.error(e); }
         }
 
-     
-        
-         async function openGlobalLogModal() {
-        document.getElementById('globalLogModal').style.display = 'flex';
-        const select = document.getElementById('globalFarmSelect');
-        const remarksField = document.getElementById('globalRemarks');
-        const contextDiv = document.getElementById('page-context');
+        // 4. Open Global Log Modal — loads only pest log folders, auto-selects current folder
+        async function openGlobalLogModal() {
+            document.getElementById('globalLogModal').style.display = 'flex';
 
-        // 1. Fetch Farms
-        try {
-            const res = await fetch('/api/farms-json');
-            const farms = await res.json();
-            
-            select.innerHTML = '<option value="">-- Select Farm --</option>';
-            
-            // 2. Determine Current Context
-            let activeFarmId = null;
-            let activeZoneInfo = "";
-
-            if (contextDiv) {
-                activeFarmId = contextDiv.getAttribute('data-farm-id');
-                const farmName = contextDiv.getAttribute('data-farm-name');
-                const zoneName = contextDiv.getAttribute('data-zone-name'); // "Master Overview" or Unit Name
-                
-                if (zoneName) {
-                    activeZoneInfo = `[Context: ${farmName} - ${zoneName}] `;
-                }
-            }
-
-            // 3. Populate Dropdown & Auto-Select
-            farms.forEach(f => {
-                const opt = document.createElement('option');
-                opt.value = f.id;
-                opt.innerText = f.name + " (" + f.number + ")";
-                
-                if (activeFarmId && parseInt(f.id) === parseInt(activeFarmId)) {
-                    opt.selected = true;
-                }
-                select.appendChild(opt);
+            // Clear any previous validation state
+            ['globalFarmSelect','globalZoneSelect','globalIssue','globalPlantName','globalRemarks'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.border = '';
             });
+            const errMsg = document.getElementById('globalValidationMsg');
+            if (errMsg) errMsg.innerText = '';
 
-            // 4. Trigger Zone Load if Farm is pre-selected
-            if (activeFarmId) {
-                await loadZonesForFarm(activeFarmId);
-                // Optional: You could auto-select the zone if you passed a zone ID
-            }
+            const select = document.getElementById('globalFarmSelect');
+            const contextDiv = document.getElementById('page-context');
 
-            // 5. Pre-fill Remarks with Context (Note of where report was logged)
-            if (activeZoneInfo) {
-                // Only append if not already there to avoid duplicates on re-open
-                if(!remarksField.value.includes("Context:")) {
-                    remarksField.value = activeZoneInfo + remarksField.value;
+            try {
+                // Only fetch folders
+                const foldersRes = await fetch('/api/pest-logs/folders-json');
+                const folders = await foldersRes.json();
+
+                select.innerHTML = '';
+
+                // Check if we're on a pest log entries page (has folder context)
+                const activeFolderId = contextDiv ? contextDiv.getAttribute('data-folder-id') : null;
+
+                folders.forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = 'folder_' + f.id;
+                    opt.innerText = f.name;
+                    if (activeFolderId && parseInt(f.id) === parseInt(activeFolderId)) {
+                        opt.selected = true;
+                    }
+                    select.appendChild(opt);
+                });
+
+                // Auto-trigger zone load for selected option
+                if (select.value) {
+                    await loadZonesForFarm(select.value);
                 }
-            }
 
-        } catch(e) { console.error("Error loading farms:", e); }
-    }
+            } catch(e) { console.error("Error loading folders:", e); }
+        }
 
-        async function loadZonesForFarm(farmId) {
+        // 5. Load Zones — only Plantation 1-4 for folders
+        async function loadZonesForFarm(selectedVal) {
             const zoneSelect = document.getElementById('globalZoneSelect');
-            if(!farmId) {
-                zoneSelect.innerHTML = '<option value="">-- Select Farm First --</option>';
+
+            if (!selectedVal) {
+                zoneSelect.innerHTML = '<option value="">-- Select Above First --</option>';
                 return;
             }
 
-            zoneSelect.innerHTML = '<option value="">Loading Zones...</option>';
+            // All selections are folders — show Plantation 1-4
+            zoneSelect.innerHTML = `
+                <option value="1">Plantation 1</option>
+                <option value="2">Plantation 2</option>
+                <option value="3">Plantation 3</option>
+                <option value="4">Plantation 4</option>
+            `;
+        }
+
+        // 6. Submit — with full field validation
+        async function submitGlobalLog() {
+            const selectedVal = document.getElementById('globalFarmSelect').value;
+            const zone = document.getElementById('globalZoneSelect').value;
+            const issue = document.getElementById('globalIssue').value.trim();
+            const plant = document.getElementById('globalPlantName').value.trim();
+            const remarks = document.getElementById('globalRemarks').value.trim();
+            const resolved = document.getElementById('globalResolved').value;
+
+            // Validation — highlight empty fields
+            function markField(id, invalid) {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.style.border = invalid ? '1.5px solid #e74c3c' : '';
+            }
+
+            markField('globalFarmSelect', !selectedVal);
+            markField('globalZoneSelect', !zone);
+            markField('globalIssue', !issue);
+            markField('globalPlantName', !plant);
+            markField('globalRemarks', !remarks);
+
+            if (!selectedVal || !zone || !issue || !plant || !remarks) {
+                let errMsg = document.getElementById('globalValidationMsg');
+                if (!errMsg) {
+                    errMsg = document.createElement('div');
+                    errMsg.id = 'globalValidationMsg';
+                    errMsg.style.cssText = 'color:#e74c3c; font-size:0.82rem; margin-bottom:8px; font-weight:500;';
+                    const btnRow = document.querySelector('#globalLogModal .modal-box > div:last-child');
+                    btnRow.parentNode.insertBefore(errMsg, btnRow);
+                }
+                errMsg.innerText = 'Please fill in all fields before saving.';
+                return;
+            }
+
+            // Clear error state
+            const errMsg = document.getElementById('globalValidationMsg');
+            if (errMsg) errMsg.innerText = '';
+            ['globalFarmSelect','globalZoneSelect','globalIssue','globalPlantName','globalRemarks'].forEach(id => markField(id, false));
+
+            // Submit to pest log entry endpoint
+            const folderId = selectedVal.replace('folder_', '');
+            const payload = {
+                folder_id: parseInt(folderId),
+                plantation: zone,
+                plant_name: plant,
+                issue: issue,
+                remarks: remarks,
+                resolved: resolved
+            };
 
             try {
-                const res = await fetch(`/api/farms/${farmId}/zones`);
-                const zones = await res.json();
-                
-                zoneSelect.innerHTML = '<option value="General">General Area</option>';
-                zones.forEach(z => {
-                    const opt = document.createElement('option');
-                    opt.value = z.name;
-                    opt.innerText = z.name;
-                    zoneSelect.appendChild(opt);
+                const res = await fetch('/pest-logs/entry/new', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
                 });
-            } catch(e) { console.error("Error loading zones:", e); }
+
+                if (res.ok) {
+                    document.getElementById('globalLogModal').style.display = 'none';
+
+                    // Clear inputs
+                    document.getElementById('globalPlantName').value = '';
+                    document.getElementById('globalIssue').value = '';
+                    document.getElementById('globalRemarks').value = '';
+                    document.getElementById('globalResolved').value = 'No';
+
+                    // Show success flash
+                    const flashContainer = document.getElementById('flashContainer');
+                    if (flashContainer) {
+                        flashContainer.style.display = 'block';
+                        const msg = document.createElement('div');
+                        msg.className = 'flash-msg flash-success';
+                        msg.innerHTML = '<i class="fas fa-check-circle"></i> <span>Log saved to registry.</span>';
+                        flashContainer.appendChild(msg);
+                        setTimeout(() => msg.remove(), 3000);
+                    }
+
+                    const terminalFeed = document.getElementById('terminalFeed');
+                    if (terminalFeed) {
+                        var entry = document.createElement('div');
+                        entry.className = 'log-line';
+                        entry.style.borderLeft = '3px solid var(--success)';
+                        const now = new Date().toLocaleTimeString();
+                        entry.innerHTML = `<span class="log-time">[${now}]</span> <span style="color:var(--success); font-weight:bold;">NEW ENTRY</span> | ${issue} (${plant})`;
+                        terminalFeed.prepend(entry);
+                    }
+                } else {
+                    alert("Failed to save report.");
+                }
+            } catch(e) { console.error(e); }
         }
- 
-
-async function submitGlobalLog() {
-    const farmId = document.getElementById('globalFarmSelect').value;
-    const zone = document.getElementById('globalZoneSelect').value;
-    const issue = document.getElementById('globalIssue').value;
-    const plant = document.getElementById('globalPlantName').value;
-    const remarks = document.getElementById('globalRemarks').value;
-
-    if(!farmId || !issue) {
-        alert("Please select a farm and define the issue.");
-        return;
-    }
-
-    const form = new FormData();
-    form.append('issue', issue);
-    form.append('category', 'General'); 
-    form.append('severity', 'Low');
-    form.append('remarks', remarks + ` [Zone: ${zone}, Plant: ${plant}]`);
-    
-    try {
-        const res = await fetch(`/plantation/${farmId}/log/add`, {
-            method: 'POST',
-            body: form
-        });
-
-        if(res.ok || res.redirected) {
-            // 1. Close Modal
-            document.getElementById('globalLogModal').style.display = 'none';
-            
-            // 2. Clear Inputs
-            document.getElementById('globalPlantName').value = '';
-            document.getElementById('globalIssue').value = '';
-            document.getElementById('globalRemarks').value = '';
-
-            // 3. Show Non-Blocking Success Notification
-            const flashContainer = document.getElementById('flashContainer');
-            if(flashContainer) {
-                flashContainer.style.display = 'block';
-                const msg = document.createElement('div');
-                msg.className = 'flash-msg flash-success';
-                msg.innerHTML = '<i class="fas fa-check-circle"></i> <span>Log saved to registry.</span>';
-                flashContainer.appendChild(msg);
-                
-                // Remove after 3 seconds
-                setTimeout(() => msg.remove(), 3000);
-            }
-            
-    
-            const terminalFeed = document.getElementById('terminalFeed');
-            if(terminalFeed) {
-                var entry = document.createElement('div');
-                entry.className = 'log-line';
-                entry.style.borderLeft = '3px solid var(--success)';
-                const now = new Date().toLocaleTimeString();
-                entry.innerHTML = `<span class="log-time">[${now}]</span> <span style="color:var(--success); font-weight:bold;">NEW ENTRY</span> | ${issue} (${plant})`;
-                terminalFeed.prepend(entry);
-            }
-            
-        } else {
-            alert("Failed to save report.");
-        }
-    } catch(e) { console.error(e); }
-}
-
 
     </script>
     {% block scripts %}{% endblock %}

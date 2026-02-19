@@ -2,10 +2,19 @@
 {% block title %}{{ folder.name }} - Entries{% endblock %}
 
 {% block content %}
+<div id="page-context" 
+     data-folder-id="{{ folder.id }}" 
+     data-folder-name="{{ folder.name }}"
+     style="display:none;"></div>
+
 <div class="pest-log-container">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h1 class="pest-greeting" style="margin:0;">{{ folder.name }}</h1>
-        <div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <div class="search-wrap">
+                <input type="text" id="entrySearch" class="search-input" placeholder="Search plant, issue, remarks...">
+                <i class="fas fa-search search-icon"></i>
+            </div>
             <a href="{{ url_for('export_folder_pdf', folder_id=folder.id) }}" class="btn btn-primary">EXPORT PDF</a>
             <a href="{{ url_for('pest_logs') }}" class="btn btn-secondary">BACK</a>
         </div>
@@ -32,12 +41,33 @@
             <div>{{ entry.entry_time }}</div>
             <div>{{ entry.staff_name }}</div>
             <div style="font-style:italic; opacity:0.8;">{{ entry.remarks }}</div>
+
+            <!-- CHANGE 2: Resolved dropdown instead of static badge -->
             <div>
-                <span class="meta-tag" style="{{ 'background:#dcfce7; color:#166534;' if entry.resolved == 'Yes' else 'background:#fee2e2; color:#991b1b;' }}">
-                    {{ entry.resolved }}
-                </span>
+                <select
+                    class="resolved-select"
+                    data-entry-id="{{ entry.id }}"
+                    onchange="updateResolved({{ entry.id }}, this.value)"
+                    style="
+                        padding: 4px 8px;
+                        border-radius: 12px;
+                        border: none;
+                        font-size: 0.78rem;
+                        font-weight: 600;
+                        cursor: pointer;
+                        {{ 'background:#dcfce7; color:#166534;' if entry.resolved == 'Yes' else 'background:#fee2e2; color:#991b1b;' }}
+                    "
+                >
+                    <option value="No" {{ 'selected' if entry.resolved != 'Yes' }}>No</option>
+                    <option value="Yes" {{ 'selected' if entry.resolved == 'Yes' }}>Yes</option>
+                </select>
             </div>
+
             <div>
+                <button class="btn-pest-action btn-pest-edit" onclick="openEditModal({{ entry.id }}, '{{ entry.plant_name }}', '{{ entry.issue }}', `{{ entry.remarks }}`, '{{ entry.resolved }}', '{{ entry.plantation }}')" title="Edit Entry"
+                    style="background:#dbeafe; color:#2563eb; border:none; border-radius:6px; padding:5px 9px; cursor:pointer; font-size:0.85rem; margin-right:4px;">
+                    <i class="fas fa-pen-to-square"></i>
+                </button>
                 <button class="btn-pest-action btn-pest-del" onclick="deleteEntry({{ entry.id }})">X</button>
             </div>
         </div>
@@ -48,10 +78,44 @@
     </div>
     {% endfor %}
     
-    <!-- Using the same FAB to add entries to THIS folder context -->
+    <!-- FAB to add entries to THIS folder context -->
     <div class="pest-fab" onclick="openLocalAdd()">+</div>
     
-    <!-- Local Add Modal (Pre-filled Folder) -->
+    <!-- Edit Entry Modal -->
+    <div id="editModal" class="pest-modal">
+        <div class="pest-modal-box" style="background:#fff; color:#1e293b; border-radius:16px; padding:30px;">
+            <h3 style="margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px; color:#1e293b;">Edit Entry</h3>
+            <input type="hidden" id="editEntryId">
+
+            <label style="font-size:0.85rem; font-weight:bold; color:#666; display:block; margin-top:8px;">Plantation</label>
+            <select id="editPlantation" style="width:100%; padding:10px 12px; border:1.5px solid #cbd5e1; border-radius:8px; margin-bottom:14px; background:#fff; color:#1e293b; font-size:0.95rem; box-sizing:border-box;">
+                <option value="1">Plantation 1</option>
+                <option value="2">Plantation 2</option>
+                <option value="3">Plantation 3</option>
+                <option value="4">Plantation 4</option>
+            </select>
+
+            <label style="font-size:0.85rem; font-weight:bold; color:#666; display:block;">Plant Name</label>
+            <input type="text" id="editPlant" style="width:100%; padding:10px 12px; border:1.5px solid #cbd5e1; border-radius:8px; margin-bottom:14px; background:#fff; color:#1e293b; font-size:0.95rem; box-sizing:border-box;">
+
+            <label style="font-size:0.85rem; font-weight:bold; color:#666; display:block;">Issue</label>
+            <input type="text" id="editIssue" style="width:100%; padding:10px 12px; border:1.5px solid #cbd5e1; border-radius:8px; margin-bottom:14px; background:#fff; color:#1e293b; font-size:0.95rem; box-sizing:border-box;">
+
+            <label style="font-size:0.85rem; font-weight:bold; color:#666; display:block;">Remarks</label>
+            <textarea id="editRemarks" style="width:100%; padding:10px 12px; border:1.5px solid #cbd5e1; border-radius:8px; margin-bottom:14px; background:#fff; color:#1e293b; font-size:0.95rem; box-sizing:border-box; height:90px; resize:vertical;"></textarea>
+
+            <label style="font-size:0.85rem; font-weight:bold; color:#666; display:block;">Resolved?</label>
+            <select id="editResolved" style="width:100%; padding:10px 12px; border:1.5px solid #cbd5e1; border-radius:8px; margin-bottom:20px; background:#fff; color:#1e293b; font-size:0.95rem; box-sizing:border-box;">
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+            </select>
+
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-primary" style="flex:1;" onclick="saveEdit()">Save Changes</button>
+                <button class="btn btn-secondary" style="flex:1;" onclick="document.getElementById('editModal').classList.remove('active')">Cancel</button>
+            </div>
+        </div>
+    </div>
     <div id="localModal" class="pest-modal">
         <div class="pest-modal-box">
             <h3>Add Entry to {{ folder.name }}</h3>
@@ -64,6 +128,14 @@
             <input type="text" id="localPlant" placeholder="Plant Name">
             <input type="text" id="localIssue" placeholder="Issue">
             <textarea id="localRemarks" placeholder="Remarks"></textarea>
+
+            <!-- CHANGE 1: Resolved field in local add modal -->
+            <label style="font-size:0.82rem; font-weight:bold; color:#666; margin-top:8px; display:block;">Resolved?</label>
+            <select id="localResolved" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px; margin-bottom:10px;">
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+            </select>
+
             <button class="btn btn-primary" style="width:100%" onclick="saveLocalEntry()">SAVE</button>
             <button class="btn btn-secondary" style="width:100%; margin-top:10px;" onclick="document.getElementById('localModal').classList.remove('active')">CANCEL</button>
         </div>
@@ -71,7 +143,55 @@
 </div>
 
 <script>
-    function openLocalAdd() { document.getElementById('localModal').classList.add('active'); }
+    // Search: filter entry rows by plant name, issue, remarks
+    document.getElementById('entrySearch').addEventListener('keyup', function() {
+        const term = this.value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.entries-grid-row');
+        rows.forEach(row => {
+            const plant   = (row.children[0] ? row.children[0].innerText : '').toLowerCase();
+            const issue   = (row.children[1] ? row.children[1].innerText : '').toLowerCase();
+            const remarks = (row.children[4] ? row.children[4].innerText : '').toLowerCase();
+            row.style.display = (!term || plant.includes(term) || issue.includes(term) || remarks.includes(term)) ? '' : 'none';
+        });
+    });
+
+    function openEditModal(id, plant, issue, remarks, resolved, plantation) {
+        document.getElementById('editEntryId').value = id;
+        document.getElementById('editPlant').value = plant;
+        document.getElementById('editIssue').value = issue;
+        document.getElementById('editRemarks').value = remarks;
+        document.getElementById('editResolved').value = resolved;
+        // Set plantation dropdown
+        const pSelect = document.getElementById('editPlantation');
+        for (let opt of pSelect.options) {
+            opt.selected = (opt.value == String(plantation));
+        }
+        document.getElementById('editModal').classList.add('active');
+    }
+
+    async function saveEdit() {
+        const id = document.getElementById('editEntryId').value;
+        const payload = {
+            plantation: document.getElementById('editPlantation').value,
+            plant_name: document.getElementById('editPlant').value,
+            issue: document.getElementById('editIssue').value,
+            remarks: document.getElementById('editRemarks').value,
+            resolved: document.getElementById('editResolved').value
+        };
+        const res = await fetch(`/pest-logs/entry/${id}/update`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            document.getElementById('editModal').classList.remove('active');
+            location.reload();
+        } else {
+            alert("Failed to save changes.");
+        }
+    }
+
+
     
     async function deleteEntry(id) {
         if(confirm("Delete entry?")) {
@@ -80,19 +200,50 @@
         }
     }
 
+    // CHANGE 1: saveLocalEntry now sends resolved value
     async function saveLocalEntry() {
         const payload = {
             folder_id: {{ folder.id }},
             plantation: document.getElementById('localPlantation').value,
             plant_name: document.getElementById('localPlant').value,
             issue: document.getElementById('localIssue').value,
-            remarks: document.getElementById('localRemarks').value
+            remarks: document.getElementById('localRemarks').value,
+            resolved: document.getElementById('localResolved').value  // CHANGE 1
         };
         const res = await fetch('/pest-logs/entry/new', {
             method:'POST', headers:{'Content-Type':'application/json'},
             body: JSON.stringify(payload)
         });
         if(res.ok) location.reload();
+    }
+
+    // CHANGE 2: Update resolved status via dropdown change
+    async function updateResolved(entryId, value) {
+        try {
+            const res = await fetch(`/pest-logs/entry/${entryId}/update`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ resolved: value })
+            });
+
+            if (res.ok) {
+                // Re-style the dropdown to match the new value
+                const select = document.querySelector(`select[data-entry-id="${entryId}"]`);
+                if (select) {
+                    if (value === 'Yes') {
+                        select.style.background = '#dcfce7';
+                        select.style.color = '#166534';
+                    } else {
+                        select.style.background = '#fee2e2';
+                        select.style.color = '#991b1b';
+                    }
+                }
+            } else {
+                alert("Failed to update status.");
+            }
+        } catch(e) {
+            console.error("Update error:", e);
+        }
     }
 </script>
 {% endblock %}

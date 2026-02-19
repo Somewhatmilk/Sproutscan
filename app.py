@@ -66,9 +66,7 @@ CROP_CYCLES = {
  
 class VideoCamera(object):
     def __init__(self):
-        # 0 is usually the default webcam
         self.video = cv2.VideoCapture(0)
-        # Load standard face detector (included in cv2)
         self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
     def __del__(self):
@@ -79,7 +77,6 @@ class VideoCamera(object):
         if not success:
             return None
             
-        # 1. ACTUAL PYTHON PREDICTION/TRACKING
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         faces = self.face_cascade.detectMultiScale(gray, 1.1, 4)
         
@@ -88,24 +85,15 @@ class VideoCamera(object):
         global current_tracking_data
         
         if len(faces) > 0:
-            # Get the biggest face (closest "Plant")
             (x, y, w, h) = faces[0]
-            
-            # Calculate center point in Percentage (for CSS positioning)
             center_x = ((x + (w/2)) / width) * 100
             center_y = ((y + (h/2)) / height) * 100
-            
-            # Update Global State
             current_tracking_data["x"] = center_x
             current_tracking_data["y"] = center_y
             current_tracking_data["detected"] = True
-            
-            # Optional: Draw on the video stream itself (Debugging)
-            # cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
         else:
             current_tracking_data["detected"] = False
 
-        # Encode frame to JPEG
         ret, jpeg = cv2.imencode('.jpg', image)
         return jpeg.tobytes()
 
@@ -124,10 +112,6 @@ def gen(camera):
 LOG_FILE = "ai_logs.txt"
 
 def read_latest_logs_by_crop(limit_lines=5000):
-    """
-    Parses the local ai_logs.txt file to find confidence scores.
-    Integrated Logic: Returns a dict keyed by crop name.
-    """
     try:
         if not os.path.exists(LOG_FILE):
             return {}
@@ -153,16 +137,13 @@ def read_latest_logs_by_crop(limit_lines=5000):
             if crop_key in result: continue 
 
             confidence = int(m.group("conf"))
-            # THE LOGIC CHECK: 
             growth_status = "Normal" if confidence >= 90 else "Needs to be checked"
-            
-            # Determine Color for UI based on status
             ai_color = "#2ecc71" if growth_status == "Normal" else "#e74c3c"
 
             result[crop_key] = {
                 "timestamp": m.group("ts").strip(),
                 "crop": crop,
-                "ai_status": m.group("status").strip(), # e.g. "Healthy"
+                "ai_status": m.group("status").strip(),
                 "confidence": confidence,
                 "growth_status": growth_status,
                 "ai_color": ai_color
@@ -185,7 +166,6 @@ def login_required(f):
 @login_required
 def get_folders_json():
     folders = PestLogFolder.get_all()
-    # Return simple list of dictionaries
     return jsonify([{'id': f.id, 'name': f.name} for f in folders])
 
 
@@ -194,7 +174,6 @@ def get_folders_json():
 @login_required
 def pest_logs():
     folders = PestLogFolder.get_all()
-    # Convert string date to object for template if needed, or handle in template
     for f in folders:
         try:
             f.date_obj = datetime.strptime(f.date_created, "%Y-%m-%d %H:%M:%S")
@@ -211,7 +190,6 @@ def create_pest_log_folder():
     if not folder_name:
         return jsonify({'error': 'Folder name is required'}), 400
     
-    # Generate simple number based on count
     existing = PestLogFolder.get_all()
     next_num = str(len(existing) + 1).zfill(2)
     
@@ -228,10 +206,13 @@ def view_pest_log_entries(folder_id):
     
     entries = PestLogEntry.get_by_folder(folder_id)
     
-    # Organize entries by plantation (1-4)
+    # CHANGE: wrap int() in try/except to handle 'General' or non-numeric plantation values
     plantations = {1: [], 2: [], 3: [], 4: []}
     for entry in entries:
-        p_num = int(entry.plantation)
+        try:
+            p_num = int(entry.plantation)
+        except (ValueError, TypeError):
+            p_num = 1  # fallback for non-numeric values
         if p_num in plantations:
             plantations[p_num].append(entry)
             
@@ -249,7 +230,7 @@ def create_pest_log_entry():
         issue=data.get('issue'),
         remarks=data.get('remarks', ''),
         resolved=data.get('resolved', 'No'),
-        staff_name=g.user.name  # Use logged in user
+        staff_name=g.user.name
     )
     new_entry.save()
     return jsonify(new_entry.to_dict()), 201
@@ -258,28 +239,26 @@ def create_pest_log_entry():
 @app.route('/plantation/<int:farm_id>/log/add', methods=['POST'])
 @login_required
 def add_pest_log_integrated(farm_id):
-    # 1. Get farm details
     farm = Plantation.get_by_id(farm_id)
     
-    # 2. Find or Create a "Field Notes" folder for this farm
     db_conn = db.get_connection()
     folder = db_conn.execute("SELECT id FROM pest_log_folders WHERE name = ?", (f"{farm.name} - Logs",)).fetchone()
     
     if not folder:
-        # Create folder if missing
         new_f = PestLogFolder(number=farm.number, name=f"{farm.name} - Logs")
         new_f.save()
         folder_id = new_f.id
     else:
         folder_id = folder['id']
 
-    # 3. Create the PestLogEntry
+    # CHANGE: added resolved field
     new_entry = PestLogEntry(
         folder_id=folder_id,
-        plantation=1, # Defaulting to sector 1 for quick notes
+        plantation=1,
         plant_name=request.form.get('plant_name', 'General'),
         issue=request.form.get('issue'),
         remarks=request.form.get('remarks'),
+        resolved=request.form.get('resolved', 'No'),
         staff_name=g.user.name
     )
     new_entry.save()
@@ -295,7 +274,6 @@ def bulk_farm_delete():
         return jsonify({"success": False}), 400
     
     db_conn = db.get_connection()
-    # Soft delete logic
     placeholders = ','.join(['?'] * len(ids))
     db_conn.execute(f"UPDATE plantations SET is_deleted = 1, date_deleted = ? WHERE id IN ({placeholders})", 
                     ([datetime.now().strftime("%d/%m/%Y")] + ids))
@@ -322,8 +300,12 @@ def update_pest_log_entry(entry_id):
     if not entry: return jsonify({'error': 'Not found'}), 404
     
     data = request.get_json()
+    # CHANGE: handle all editable fields, not just resolved
     if 'resolved' in data: entry.resolved = data['resolved']
-    # Add other fields as needed for edit
+    if 'plantation' in data: entry.plantation = data['plantation']
+    if 'plant_name' in data: entry.plant_name = data['plant_name']
+    if 'issue' in data: entry.issue = data['issue']
+    if 'remarks' in data: entry.remarks = data['remarks']
     
     entry.save()
     return jsonify(entry.to_dict()), 200
@@ -342,7 +324,7 @@ def search_pest_logs():
     results = PestLogEntry.search(query)
     return jsonify([r.to_dict() for r in results])
 
-# --- PDF EXPORT (Ported logic, no ORM) ---
+# --- PDF EXPORT ---
 @app.route('/pest-logs/folder/<int:folder_id>/export-pdf')
 @login_required
 def export_folder_pdf(folder_id):
@@ -363,17 +345,17 @@ def export_folder_pdf(folder_id):
     elements = []
     styles = getSampleStyleSheet()
     
-    # Title
     elements.append(Paragraph(f"PEST LOG: {folder.name}", styles['Heading1']))
     elements.append(Spacer(1, 0.2*inch))
     
-    # Table Data
     data = [['Plantation', 'Plant', 'Issue', 'Time', 'Staff', 'Remarks', 'Status']]
+    # CHANGE: safe int conversion for plantation label
     for e in entries:
-        data.append([
-            f"P-{e.plantation}", e.plant_name, e.issue, 
-            e.entry_time, e.staff_name, e.remarks, e.resolved
-        ])
+        try:
+            p_label = f"P-{int(e.plantation)}"
+        except (ValueError, TypeError):
+            p_label = "P-1"
+        data.append([p_label, e.plant_name, e.issue, e.entry_time, e.staff_name, e.remarks, e.resolved])
     
     table = Table(data, colWidths=[0.8*inch, 1.5*inch, 2*inch, 1.5*inch, 1*inch, 2*inch, 0.8*inch])
     table.setStyle(TableStyle([
@@ -409,7 +391,6 @@ def load_logged_in_user():
     if user_id is None:
         g.user = None
     else:
-        # Fetch fresh user object
         db_conn = db.get_connection()
         row = db_conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         db_conn.close()
@@ -422,21 +403,14 @@ def load_logged_in_user():
 @app.route('/api/setup-mfa')
 @login_required
 def setup_mfa():
-    # 1. Generate Secret
     secret = pyotp.random_base32()
-    
-    # 2. STORE IN SESSION ONLY (Do not save to DB yet!)
     session['temp_mfa_secret'] = secret
-    
-    # 3. Generate QR Code
     user_email = g.user.email or g.user.username
     uri = pyotp.totp.TOTP(secret).provisioning_uri(name=user_email, issuer_name="AgriScan AI")
-    
     img = qrcode.make(uri)
     buffered = io.BytesIO()
     img.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
-    
     return jsonify({
         "secret": secret, 
         "qr_image": f"data:image/png;base64,{img_str}"
@@ -452,14 +426,13 @@ def verify_mfa_setup():
     if not secret:
         return jsonify({"success": False, "message": "Session expired. Try again."})
 
-    # Verify the token against the temporary secret
     totp = pyotp.TOTP(secret)
     if totp.verify(token):
         conn = db.get_connection()
         conn.execute("UPDATE users SET mfa_secret = ? WHERE id = ?", (secret, session['user_id']))
         conn.commit()
         conn.close()
-        session.pop('temp_mfa_secret', None) # Clear temp
+        session.pop('temp_mfa_secret', None)
         return jsonify({"success": True, "message": "MFA Enabled Successfully!"})
     
     return jsonify({"success": False, "message": "Invalid Code"})
@@ -467,7 +440,6 @@ def verify_mfa_setup():
 # --- LOGIN LOGIC ---
 @app.route('/', methods=['GET', 'POST'])
 def login():
-    # AJAX Logic (From Secondary Version)
     if request.method == 'POST' and request.is_json:
         data = request.get_json()
         user = User.get_by_username(data.get('username'))
@@ -475,7 +447,6 @@ def login():
         if not user or not check_password_hash(user.password, data.get('password')):
             return jsonify({"success": False, "message": "Invalid credentials"})
             
-  
         conn = db.get_connection()
         row = conn.execute("SELECT mfa_secret FROM users WHERE id = ?", (user.id,)).fetchone()
         conn.close()
@@ -539,7 +510,6 @@ def create_plantation():
                 number=form.number.data, 
                 name=form.name.data, 
                 date_created=formatted_date,
-                # NEW: Read GPS & area from form
                 latitude=request.form.get('latitude', type=float),
                 longitude=request.form.get('longitude', type=float),
                 area_hectares=request.form.get('area_hectares', type=float)
@@ -566,7 +536,6 @@ def view_farms():
 @app.route('/maintenance')
 @login_required
 def maintenance_hub():
-    # Use IncidentLog here (Renamed from PestLog)
     incidents = IncidentLog.get_all_active()
     return render_template('maintenance.html', incidents=incidents)
 
@@ -574,14 +543,12 @@ def maintenance_hub():
 @app.route('/api/farms-json')
 @login_required
 def get_farms_simple():
-    """Returns a simple JSON list of all active farms for dropdowns."""
     farms = Plantation.get_all()
     return jsonify([{'id': f.id, 'name': f.name, 'number': f.number} for f in farms])
 
 @app.route('/api/farms/<int:farm_id>/zones')
 @login_required
 def get_farm_zones_json(farm_id):
-    """Returns zones specific to a farm ID."""
     zones = FarmZone.get_by_farm(farm_id)
     return jsonify([{'id': z.id, 'name': z.name} for z in zones])
 
@@ -589,24 +556,19 @@ def get_farm_zones_json(farm_id):
 @login_required
 def set_global_crop(farm_id):
     crop_id = request.form.get('global_crop_id')
-    
     conn = db.get_connection()
     conn.execute("UPDATE plantations SET global_crop_id = ? WHERE id = ?", (crop_id, farm_id))
     conn.commit()
     conn.close()
-    
- 
     return redirect(url_for('view_farm_overview', farm_id=farm_id))
 
 @app.route('/farm/unit/<int:zone_id>/set_override', methods=['POST'])
 @login_required
 def set_unit_override(zone_id):
     crop_id = request.form.get('override_crop_id')
-    # If crop_id is 0, it clears the override
     FarmZone.set_zone_crop(zone_id, crop_id)
     return redirect(request.referrer)
 
-# --- UPDATE EXISTING ROUTE: view_plantation ---
 @app.route('/farm/<int:farm_id>/unit/<int:zone_id>')
 @login_required
 def view_plantation(farm_id, zone_id):
@@ -617,11 +579,7 @@ def view_plantation(farm_id, zone_id):
         return redirect(url_for('home'))
         
     logs = IncidentLog.get_by_plantation(farm_id)
-    
- 
     active_crop = plantation.get_effective_crop(zone_id)
-    
-    # Get all crops for the settings modal (Special Cases)
     all_crops = Crop.get_all_with_stages()
 
     return render_template('view_plantation.html', 
@@ -637,11 +595,9 @@ def view_plantation(farm_id, zone_id):
 def view_farm_overview(farm_id):
     farm = Plantation.get_by_id(farm_id)
     if not farm: return redirect(url_for('home'))
- 
     logs = IncidentLog.get_by_plantation(farm_id)
     units = FarmZone.get_by_farm(farm_id)
     all_crops = Crop.get_all_with_stages()
-    
     return render_template('farm_overview.html', 
                            farm=farm, 
                            units=units, 
@@ -654,15 +610,11 @@ def view_farm_overview(farm_id):
 def create_farm_unit(farm_id):
     name = request.form.get('name')
     if name:
-        # Create the new zone in DB
-        # Note: You might need to add a 'save' method to FarmZone in database.py 
-        # or use raw SQL here if you haven't updated the class yet.
         db_conn = db.get_connection()
         db_conn.execute("INSERT INTO farm_zones (farm_id, name, type) VALUES (?, ?, ?)", 
                         (farm_id, name, 'camera'))
         db_conn.commit()
         db_conn.close()
-        
         flash(f"Unit '{name}' added to grid.", "success")
     return redirect(url_for('view_farm_overview', farm_id=farm_id))
 
@@ -670,7 +622,6 @@ def create_farm_unit(farm_id):
 @app.route('/plantation/<int:plantation_id>/log/add', methods=['POST'])
 @login_required
 def add_pest_log(plantation_id):
-    # This uses the new WTForms validation
     form = IncidentForm(request.form) 
     
     if form.validate():
@@ -693,7 +644,6 @@ def add_pest_log(plantation_id):
 @login_required
 def toggle_log_status(log_id):
     conn = db.get_connection()
-    # Ensure table name matches database.py (pest_logs)
     conn.execute("UPDATE pest_logs SET resolved = NOT resolved WHERE id = ?", (log_id,))
     conn.commit()
     conn.close()
@@ -720,7 +670,6 @@ def update_plantation(plantation_id):
         plantation.number = form.number.data
         plantation.name = form.name.data
         plantation.date_created = formatted_date
-        # NEW: Update GPS & area
         plantation.latitude = request.form.get('latitude', type=float)
         plantation.longitude = request.form.get('longitude', type=float)
         plantation.area_hectares = request.form.get('area_hectares', type=float)
@@ -729,7 +678,6 @@ def update_plantation(plantation_id):
         flash('Farm updated successfully!', 'success')
         return redirect(url_for('view_farms'))
     
-    # PRE-FILL LOGIC
     if request.method == 'GET':
         form.number.data = plantation.number
         form.name.data = plantation.name
@@ -746,13 +694,11 @@ def update_plantation(plantation_id):
 @login_required
 def delete_plantation(plantation_id):
     p = Plantation.get_by_id(plantation_id)
-
     if p:
         p.soft_delete()
         flash("Farm moved to Deleted Farms.", "success")
     else:
         flash("Farm not found.", "danger")
-
     return redirect(url_for("view_farms"))
 
 @app.route("/farms/deleted")
@@ -795,7 +741,6 @@ def forgot_password():
 @login_required
 def profile():
     if request.method == 'POST':
-        # Handle Password Change
         new_pass = request.form.get('new_password')
         if new_pass:
             hashed = generate_password_hash(new_pass)
@@ -805,7 +750,6 @@ def profile():
             conn.close()
             flash("Password updated successfully.", "success")
         return redirect(url_for('profile'))
-        
     return render_template('profile.html', user=g.user)
 
 @app.route('/users/<int:user_id>/update', methods=['POST'])
@@ -814,7 +758,6 @@ def update_user(user_id):
     if g.user.role != 'admin':
         return jsonify({"success": False, "message": "Unauthorized"}), 403
 
-    # Get data using .get() to avoid crashes
     name = request.form.get('name')
     email = request.form.get('email')
     role = request.form.get('role')
@@ -910,7 +853,6 @@ def delete_crop(crop_id):
 def view_list():
     with sqlite3.connect('plantations.db') as conn:
         conn.row_factory = sqlite3.Row
-        # We fetch the 'created_at' of the STAGE to calculate days elapsed
         rows = conn.execute("""
             SELECT
                 c.id AS crop_id,
@@ -929,12 +871,10 @@ def view_list():
             ORDER BY c.crop_name ASC
         """).fetchall()
 
-    # --- MATHEMATICAL CALCULATIONS ---
     processed_crops = []
     for row in rows:
         crop_data = dict(row)
         
-        # 1. Normalize name for lookup
         name_key = crop_data['crop_name'].lower()
         if 'tomato' in name_key: cycle_key = 'tomato'
         elif 'lettuce' in name_key: cycle_key = 'lettuce'
@@ -944,32 +884,26 @@ def view_list():
         current_stage = crop_data['stage_name']
         cycle_data = CROP_CYCLES.get(cycle_key, CROP_CYCLES['default'])
         
-        # 2. Calculate Days Elapsed since stage change
         try:
-            # Parse DB timestamp (Handles "YYYY-MM-DD HH:MM:SS" or similar)
             start_dt = datetime.strptime(crop_data['stage_start_date'], '%Y-%m-%d %H:%M:%S')
         except:
             try: 
                  start_dt = datetime.strptime(crop_data['stage_start_date'], '%Y-%m-%d')
             except:
-                 start_dt = datetime.now() # Fallback
+                 start_dt = datetime.now()
 
         days_elapsed = (datetime.now() - start_dt).days
         if days_elapsed < 0: days_elapsed = 0
         
-        # 3. Get Expected Duration for current stage
         expected_duration = cycle_data.get(current_stage, 30)
         
-        # 4. Calculate Progress Percentage
         if expected_duration > 0:
             progress = int((days_elapsed / expected_duration) * 100)
         else:
-            progress = 100 # Harvest Ready
+            progress = 100
 
-        # Cap progress at 99% if not manually moved
         progress = min(progress, 99) if current_stage != 'Harvest Ready' else 100
         
-        # 5. Calculate Days to Harvest (Sum of remaining stages)
         days_to_harvest = 0
         found_current = False
         for stage, duration in cycle_data.items():
@@ -979,8 +913,6 @@ def view_list():
                 days_to_harvest += remaining_in_stage
             elif found_current:
                 days_to_harvest += duration
-        
- 
         
         crop_data['calc_progress'] = progress
         crop_data['days_elapsed'] = days_elapsed
@@ -993,7 +925,6 @@ def view_list():
 @app.route("/api/log_map")
 @login_required
 def log_map():
-    """Endpoint used by viewcrops.html to update UI via AJAX"""
     data = read_latest_logs_by_crop()
     return jsonify({"success": True, "data": data})
 
@@ -1043,7 +974,6 @@ def update_report(id):
         flash('Report updated!', 'success')
         return redirect(url_for('retrieve_reports'))
     
-    # Pre-fill
     form.staff_name.data = report.staff_name
     form.category.data = report.category
     form.description.data = report.description
@@ -1078,7 +1008,6 @@ def handle_ai_profiles():
         profile.save()
         return jsonify({"success": True})
     
-    # GET
     profiles = AIProfile.get_all()
     return jsonify([p.__dict__ for p in profiles])
 
@@ -1087,11 +1016,8 @@ def handle_ai_profiles():
 def security_audit():
     if g.user.role != 'admin': return jsonify([])
     
-    # Fetch raw users to show hashed passwords
     conn = db.get_connection()
     users = conn.execute("SELECT username, password FROM users").fetchall()
-    
-    # Fetch raw logs to show encrypted text
     logs = conn.execute("SELECT issue, remarks FROM pest_logs").fetchall()
     conn.close()
     
@@ -1116,20 +1042,15 @@ def save_snapshot():
     if not camera_instance:
         camera_instance = VideoCamera()
         
-    # Get the raw frame (not the bytes for browser, but the numpy array)
     success, image = camera_instance.video.read()
     
     if success:
-        # Create folder if not exists
         folder = os.path.join('static', 'snapshots')
         if not os.path.exists(folder):
             os.makedirs(folder)
             
-        # Generate filename
         filename = f"snap_{int(time.time())}.jpg"
         path = os.path.join(folder, filename)
-        
-        # Save
         cv2.imwrite(path, image)
         return jsonify({"success": True, "file": filename})
     
@@ -1144,7 +1065,6 @@ def update_crop_stage(crop_id):
     if not stage_name:
         return jsonify({"success": False, "message": "Stage name required"}), 400
 
-    # Delegate to Database Class
     Crop.add_stage(crop_id, stage_name)
     return jsonify({"success": True}), 200
  
@@ -1154,36 +1074,28 @@ def live_data():
     crop_name = request.args.get('crop', 'Unknown')
     profile = AIProfile.get_by_name(crop_name)
     
- 
     box_x = current_tracking_data["x"]
     box_y = current_tracking_data["y"]
     is_detected = current_tracking_data["detected"]
     
-    # 2. Logic: If detected, Confidence is HIGH. If not, LOW.
     req_base = request.args.get('base_override')
     base = int(req_base) if req_base else profile.base_confidence
     
     if is_detected:
-        # High confidence because we found the object/face
         fluctuation = random.uniform(-2, 2)
         current_confidence = round(base + fluctuation, 1)
         status = "TARGET LOCKED"
-        color = "#2ecc71" # Green
+        color = "#2ecc71"
         insight = f"Object detected at {int(box_x)}%, {int(box_y)}%. Assessing health..."
     else:
-        # Low confidence because screen is empty
         current_confidence = round(random.uniform(5, 15), 1) 
         status = "SCANNING..."
-        color = "#e74c3c" # Red
+        color = "#e74c3c"
         insight = "No active targets in sector. Searching..."
-        
-     
         box_x = 50
         box_y = 50
 
     current_confidence = max(0, min(100, current_confidence))
-    
-    # Write logs
     write_detailed_log(crop_name, status, current_confidence, int(box_x), int(box_y))
 
     return jsonify({
@@ -1191,7 +1103,7 @@ def live_data():
         "confidence": current_confidence,
         "insight": insight,
         "color": color,
-        "box": { "x": box_x, "y": box_y } # THIS NOW SENDS REAL COORDINATES
+        "box": { "x": box_x, "y": box_y }
     })
 
 

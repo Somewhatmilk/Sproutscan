@@ -31,6 +31,27 @@
     </div>
 
     <div class="table-card">
+        <!-- Search Results Panel (hidden by default) -->
+        <div id="searchResultsPanel" style="display:none; padding:15px; border-bottom:1px solid #e2e8f0;">
+            <div style="font-size:0.8rem; font-weight:600; color:#64748b; margin-bottom:10px; text-transform:uppercase; letter-spacing:0.05em;">Search Results</div>
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#f8fafc;">
+                        <th style="padding:10px 14px; text-align:left; font-size:0.78rem; color:#64748b;">FOLDER</th>
+                        <th style="padding:10px 14px; text-align:left; font-size:0.78rem; color:#64748b;">PLANT</th>
+                        <th style="padding:10px 14px; text-align:left; font-size:0.78rem; color:#64748b;">ISSUE</th>
+                        <th style="padding:10px 14px; text-align:left; font-size:0.78rem; color:#64748b;">REMARKS</th>
+                        <th style="padding:10px 14px; text-align:left; font-size:0.78rem; color:#64748b;">STATUS</th>
+                        <th style="padding:10px 14px; text-align:left; font-size:0.78rem; color:#64748b;">TIME</th>
+                    </tr>
+                </thead>
+                <tbody id="searchResultsBody"></tbody>
+            </table>
+            <div id="searchNoResults" style="display:none; text-align:center; padding:20px; color:#94a3b8;">No matching entries found.</div>
+        </div>
+
+        <!-- Normal Folder Table (hidden when searching) -->
+        <div id="folderTableWrap">
         <table>
             <thead>
                 <tr>
@@ -44,41 +65,27 @@
             <tbody id="folderTableBody">
                 {% for folder in folders %}
                 <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <!-- 1. ID -->
                     <td style="padding: 18px; font-family: monospace; font-weight: 600; color: #64748b;">
-                        {{ folder.number }}
+                        {{ loop.revindex }}
                     </td>
-                    
-                    <!-- 2. Name -->
                     <td style="padding: 18px;">
                         <div style="font-weight: 600; color: #334155;">{{ folder.name }}</div>
                     </td>
-
-                    <!-- 3. Date -->
                     <td style="padding: 18px; color: #64748b;">
                         {{ folder.date_obj.strftime('%d/%m/%Y') if folder.date_obj else folder.date_created }}
                     </td>
-
-                    <!-- 4. Status (Static for now, could be dynamic) -->
                     <td style="padding: 18px;">
                         <span class="meta-tag" style="background: #e0f2fe; color: #0369a1;">
                             ACTIVE
                         </span>
                     </td>
-                    
-                    <!-- 5. Actions -->
                     <td style="padding: 18px; text-align: right;">
-                        <div style="display: inline-flex; align-items: stretch; gap: 6px;">
-                            <a href="{{ url_for('view_pest_log_entries', folder_id=folder.id) }}" class="btn-action btn-view">
-                                View Entries
-                            </a>
-                            <button class="btn-action" style="color: #64748b;" title="Edit Folder">
-                                <i class="fas fa-pencil-alt"></i>
-                            </button>
-                            <button onclick="deleteFolder({{ folder.id }})" class="btn-action btn-delete" title="Delete Folder">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
+                        <a href="{{ url_for('view_pest_log_entries', folder_id=folder.id) }}" class="btn-action btn-view">
+                            View Entries
+                        </a>
+                        <button onclick="deleteFolder({{ folder.id }})" class="btn-action btn-delete" title="Delete Folder">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </td>
                 </tr>
                 {% else %}
@@ -86,19 +93,58 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 
 <script>
-    // 1. Search Logic
-    document.getElementById('logSearch').addEventListener('keyup', function(e) {
-        const term = e.target.value.toLowerCase();
-        const rows = document.querySelectorAll('#folderTableBody tr');
-        
-        rows.forEach(row => {
-            const text = row.innerText.toLowerCase();
-            row.style.display = text.includes(term) ? '' : 'none';
-        });
+    // Search Logic — queries entries by plant, issue, remarks via API
+    let searchTimer = null;
+    document.getElementById('logSearch').addEventListener('keyup', function() {
+        const term = this.value.trim();
+        clearTimeout(searchTimer);
+
+        if (!term) {
+            document.getElementById('folderTableWrap').style.display = '';
+            document.getElementById('searchResultsPanel').style.display = 'none';
+            return;
+        }
+
+        searchTimer = setTimeout(async () => {
+            try {
+                const res = await fetch(`/pest-logs/search?q=${encodeURIComponent(term)}`);
+                const results = await res.json();
+
+                document.getElementById('folderTableWrap').style.display = 'none';
+                document.getElementById('searchResultsPanel').style.display = '';
+
+                const tbody = document.getElementById('searchResultsBody');
+                const noResults = document.getElementById('searchNoResults');
+
+                if (results.length === 0) {
+                    tbody.innerHTML = '';
+                    noResults.style.display = '';
+                    return;
+                }
+
+                noResults.style.display = 'none';
+                tbody.innerHTML = results.map(r => `
+                    <tr style="border-bottom:1px solid #f1f5f9;">
+                        <td style="padding:10px 14px; color:#64748b; font-size:0.85rem;">${r.folder_name || '—'}</td>
+                        <td style="padding:10px 14px; font-weight:600; color:#334155;">${r.plant_name}</td>
+                        <td style="padding:10px 14px; color:#e74c3c;">${r.issue}</td>
+                        <td style="padding:10px 14px; font-style:italic; color:#64748b;">${r.remarks || '—'}</td>
+                        <td style="padding:10px 14px;">
+                            <span style="padding:3px 10px; border-radius:12px; font-size:0.78rem; font-weight:600;
+                                ${r.resolved === 'Yes' ? 'background:#dcfce7; color:#166534;' : 'background:#fee2e2; color:#991b1b;'}">
+                                ${r.resolved}
+                            </span>
+                        </td>
+                        <td style="padding:10px 14px; color:#64748b; font-size:0.82rem;">${r.entry_time}</td>
+                    </tr>
+                `).join('');
+            } catch(e) { console.error('Search error:', e); }
+        }, 300);
     });
 
     // 2. Create Folder Logic
@@ -116,7 +162,6 @@
         else alert("Error creating folder");
     }
 
-   
     async function deleteFolder(id) {
         if(confirm("Are you sure? This will delete all entries in this folder.")) {
             const res = await fetch(`/pest-logs/folder/${id}/delete`, {method:'POST'});
