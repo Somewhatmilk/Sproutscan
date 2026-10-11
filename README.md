@@ -4,9 +4,21 @@ Farm management web app for tracking crop statistics with cameras and data —
 built so that it stays simple enough for anyone, including elderly farmers,
 to see costs, profits, and quantities at a glance.
 
-> This repository is a working fork of [`HighDantdn/webdevproj`](https://github.com/HighDantdn/webdevproj).
-> The fork strips runtime secrets and adds a small test baseline; the original
-> project's UI and data model are preserved as the starting point.
+**Author:** Jonathan Choe (github.com/Somewhatmilk) — original creator and
+primary maintainer. The initial codebase began as a school project during the
+2025/26 web-development semester and has been actively refined, secured, and
+extended here.
+
+## Showcase
+
+Product captures from the app's own media folder — camera-zone views used in
+the farm dashboard:
+
+![Farm 1](static/images/farm1.jpg) ![Farm 2](static/images/farm2.jpg)
+
+![Farm 3](static/images/farm3.jpg) ![Farm 4](static/images/farm4.jpg)
+
+![Farm 5](static/images/farm5.jpg) ![Farms view](static/images/viewfarms.png)
 
 ## What it does
 
