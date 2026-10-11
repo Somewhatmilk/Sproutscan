@@ -30,6 +30,22 @@ what is it worth now" — without hiding anything behind jargon.
 - **AI/logs:** camera-zone confidence logs rendered in the UI
 - **Tests:** Node.js built-in test runner (`node --test`)
 
+## Tests
+
+Both suites are runnable and passing:
+
+```bash
+# JS helpers (no install needed)
+node --test tests/crop-utils.test.js
+
+# Flask smoke tests (after pip install -r req.txt)
+.venv/Scripts/python.exe -m pytest tests/test_app.py -q
+```
+
+## Docs
+
+- [`docs/PROJECT_OUTLINE.md`](docs/PROJECT_OUTLINE.md) — pages, data model, camera/AI flow, planned addons
+
 ## Quick start
 
 ```bash

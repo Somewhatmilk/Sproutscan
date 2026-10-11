@@ -3,6 +3,12 @@ WTForms
 pyotp
 qrcode
 python-multipart
-jinja2  
+jinja2
 werkzeug
 pillow
+python-dotenv
+authlib
+requests
+numpy
+opencv-python-headless
+pytest

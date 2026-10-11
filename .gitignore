@@ -7,5 +7,7 @@ secret.*
 ai_logs.txt
 __pycache__/
 *.pyc
+.venv/
+venv/
 instance/
 .DS_Store
