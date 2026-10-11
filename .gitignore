@@ -1,4 +1,10 @@
 .env
+*.env
+secret.*
+*.key
+*.db
+*.sqlite
+ai_logs.txt
 __pycache__/
 *.pyc
 instance/
