@@ -4,10 +4,12 @@ Farm management web app for tracking crop statistics with cameras and data —
 built so that it stays simple enough for anyone, including elderly farmers,
 to see costs, profits, and quantities at a glance.
 
-**Author:** Jonathan Choe (github.com/Somewhatmilk) — primary contributor and
-maintainer. The initial codebase came from a school team project during the
-2025/26 web-development semester; this repository is the actively refined,
-secured, and extended continuation of that work.
+**Author:** Jonathan Choe (github.com/Somewhatmilk) — made a large
+contribution to the entire web application built here: security cleanup,
+testable UI logic, automated tests, and documentation. The initial codebase
+began as a school team project during the 2025/26 web-development semester;
+this repository is the actively refined, secured, and extended continuation
+of that work.
 
 ## Showcase
 
