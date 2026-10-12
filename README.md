@@ -4,7 +4,7 @@ A farm-management web app for keeping crop records in one place.
 
 SproutScan tracks zones, crop progress, incidents, costs, yields, profits, and quantities. Camera-linked zones can also show a confidence status so a farmer knows what needs a closer look. The aim is simple: open the dashboard and understand what was planted, what it cost, and what it is producing without digging through a manual.
 
-**Author:** Jonathan Choe ([Somewhatmilk](https://github.com/Somewhatmilk)) made a large contribution to the entire web application built here, including the security cleanup, testable UI logic, automated tests, and documentation. The first codebase began as a school team project during the 2025/26 web-development semester. This repository is the actively refined and secured continuation of that work.
+**Author:** Jonathan Choe ([Somewhatmilk](https://github.com/Somewhatmilk)). The first codebase was a school team project during the 2025/26 web-development semester; this repository is my refined and secured continuation of that work — security cleanup, testable UI logic, automated tests, and documentation.
 
 ## Showcase
 
