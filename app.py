@@ -543,7 +543,7 @@ def login():
         record_successful_login()
         session['user_id'] = user.id
         session['role'] = user.role
-    return jsonify({"success": True, "redirect": url_for('home')})
+        return jsonify({"success": True, "redirect": url_for('home')})
 
     return render_template('login.html')
 
