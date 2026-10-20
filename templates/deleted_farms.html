@@ -194,7 +194,7 @@
                     <td>{{ p.date_deleted or '-' }}</td>
                     <td>
                         <div class="action-cell">
-                            <form method="POST" action="{{ url_for('restore_plantation', plantation_id=p.id) }}" style="margin:0;">
+                            <form method="POST" action="{{ url_for('restore_plantation', plantation_id=p.id) }}" style="margin:0;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn-restore-dark">
                                     <i class="fas fa-undo"></i> Restore
                                 </button>

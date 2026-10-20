@@ -74,7 +74,7 @@
 
                     <!-- Resolve Action -->
                     <td>
-                        <form action="{{ url_for('toggle_log_status', log_id=ticket.id) }}" method="POST">
+                        <form action="{{ url_for('toggle_log_status', log_id=ticket.id) }}" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button class="btn-action btn-restore" type="submit" title="Mark as Resolved">
                                 <i class="fas fa-check"></i> Resolve
                             </button>

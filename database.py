@@ -7,11 +7,20 @@ from security import sec
 class Database:
     def __init__(self, db_name='plantations.db'):
         self.db_name = db_name
+        self._schema_initialized = False
+
+    def _ensure_schema(self):
+        """Run DDL exactly once per process (lazy, on first use)."""
+        if self._schema_initialized:
+            return
+        self._schema_initialized = True  # set first: init_db re-enters get_connection
         self.init_db()
-    
+
     def get_connection(self):
         conn = sqlite3.connect(self.db_name)
-        conn.row_factory = sqlite3.Row  
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys=ON")  # S8: enforce FKs per connection
+        self._ensure_schema()
         return conn
     
     def init_db(self):
@@ -160,17 +169,21 @@ class Database:
         ''')
         cursor.execute('SELECT COUNT(*) FROM users')
         if cursor.fetchone()[0] == 0:
-            default_pw = generate_password_hash('123')
+            # S3: no default '123' password seeds — every seed user gets a random
+            # one-time password that the admin must share/rotate; never a shared constant.
             users_data = [
-                ('admin', 'admin@agriscan.com', default_pw, 'admin', 'System Admin', 'Full Access', '#c0392b'),
-                ('jane', 'jane@agriscan.com', default_pw, 'expert', 'Jane Doe', 'Agronomist', '#2980b9'),
-                ('john', 'john@agriscan.com', default_pw, 'farmer', 'Farmer John', 'Field Op', '#27ae60')
+                ('admin', 'admin@agriscan.com', 'admin', 'System Admin', 'Full Access', '#c0392b'),
+                ('jane', 'jane@agriscan.com', 'expert', 'Jane Doe', 'Agronomist', '#2980b9'),
+                ('john', 'john@agriscan.com', 'farmer', 'Farmer John', 'Field Op', '#27ae60')
             ]
-            cursor.executemany(
-                'INSERT INTO users (username, email, password, role, name, bio, avatar_color) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                users_data
-            )
-            print("Default users seeded.")
+            import secrets
+            for username, email, role, name, bio, color in users_data:
+                one_time = secrets.token_urlsafe(12)
+                cursor.execute(
+                    'INSERT INTO users (username, email, password, role, name, bio, avatar_color, mfa_secret) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                    (username, email, generate_password_hash(one_time), role, name, bio, color, None)
+                )
+            print("Default users seeded with per-user random one-time passwords.")
 
 
         cursor.execute('''
@@ -595,7 +608,8 @@ class Plantation:
     def get_by_id(pid):
         db = Database()
         conn = db.get_connection()
-        row = conn.execute("SELECT * FROM plantations WHERE id=?", (pid,)).fetchone()
+        # S8: read path enforces soft-delete — deleted farms are not returned
+        row = conn.execute("SELECT * FROM plantations WHERE id=? AND is_deleted=0", (pid,)).fetchone()
         conn.close()
         return Plantation(**dict(row)) if row else None
 

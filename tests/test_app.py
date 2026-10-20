@@ -8,6 +8,8 @@ import os
 import sys
 import tempfile
 
+# S1: app refuses to start without SECRET_KEY — tests must supply one
+os.environ.setdefault("SECRET_KEY", "test-secret-key")
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
@@ -18,7 +20,8 @@ def _client():
 
     tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     tmp.close()
-    app_module.Database(db_name=tmp.name)
+    test_db = app_module.Database(db_name=tmp.name)
+    test_db.init_db()  # schema-once: DDL no longer runs in __init__; force it here
     app_module.app.config["TESTING"] = True
     with app_module.app.test_client() as c:
         yield c

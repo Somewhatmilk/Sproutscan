@@ -7,7 +7,7 @@
         <h1>Report Technical Error</h1>
         <p class="text-muted">Describe the issue encountered by the AI or hardware units.</p>
 
-        <form method="POST">
+        <form method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group mb-4">
                 <label>Reporter Name</label>
                 <input type="text" name="staff_name" class="input-std" value="{{ g.user.name }}" readonly>

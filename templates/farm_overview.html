@@ -28,7 +28,7 @@
                   
                 <div class="global-selector-wrap">
                     <label>TARGET CROP</label>
-                    <form action="{{ url_for('set_global_crop', farm_id=farm.id) }}" method="POST">
+                    <form action="{{ url_for('set_global_crop', farm_id=farm.id) }}" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <select name="global_crop_id" onchange="this.form.submit()" class="master-dropdown">
                             <!-- If no crop is set, show placeholder, otherwise hide placeholder -->
                             {% if not farm.global_crop_id %}

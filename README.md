@@ -70,3 +70,9 @@ python app.py
 ```
 
 Open `http://127.0.0.1:5000` in a browser.
+
+> **Production note (S4):** `app.py` must set `SECRET_KEY` at startup or it refuses to run
+> (`os.environ['SECRET_KEY']` with a clear error — no committed fallback). For production,
+> run behind a WSGI server such as `waitress-serve` or Gunicorn instead of `python app.py`
+> (which is development-only), serve over HTTPS, and keep `SESSION_COOKIE_SECURE=True`
+> enabled so session cookies are only sent over TLS.

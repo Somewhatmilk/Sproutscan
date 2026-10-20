@@ -40,7 +40,7 @@
                 <span class="meta-tag">Last updated recently</span>
             </div>
             
-            <form method="POST">
+            <form method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <label style="font-size: 0.8rem; font-weight: bold; color: #666;">Update Password</label>
                 <div style="display: flex; gap: 10px;">
                     <input type="password" name="new_password" class="input-std" placeholder="New secure password" style="margin-bottom: 0;">

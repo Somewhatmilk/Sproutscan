@@ -256,7 +256,7 @@
         </div>
         {% endif %}
 
-        <form method="POST">
+        <form method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <!-- Serial Number -->
             <div class="form-group">
                 <label class="field-label">Serial Number</label>

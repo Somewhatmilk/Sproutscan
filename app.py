@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, g, Response
+from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv  
 from authlib.integrations.flask_client import OAuth
 from database import Database, Plantation, User, IncidentLog, Crop, AIProfile, PestLogFolder, PestLogEntry, FarmZone, Report
@@ -23,7 +24,63 @@ import base64
 
 load_dotenv()
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'fallback-secret-key')
+# S1: fail loud — a missing SECRET_KEY is a hard startup error, never a committed fallback
+if not os.environ.get('SECRET_KEY'):
+    raise RuntimeError(
+        "SECRET_KEY is not set. Generate one (e.g. `python -c \"import secrets; print(secrets.token_hex(32))\"`) "
+        "and add it to .env — see .env.example."
+    )
+app.secret_key = os.environ['SECRET_KEY']
+
+# S5: CSRF protection for all state-changing requests (token via forms or X-CSRFToken header)
+csrf = CSRFProtect(app)
+
+# S9: minimal login rate limiting — in-memory IP/session counter with backoff
+LOGIN_ATTEMPTS = {}
+LOGIN_MAX_ATTEMPTS = 10
+LOGIN_LOCKOUT_SECONDS = 300
+
+def login_lockout_key():
+    return request.remote_addr or 'unknown'
+
+def login_allowed():
+    key = login_lockout_key()
+    entry = LOGIN_ATTEMPTS.get(key)
+    if not entry:
+        return True, 0
+    count, first_ts = entry
+    if count >= LOGIN_MAX_ATTEMPTS and (time.time() - first_ts) < LOGIN_LOCKOUT_SECONDS:
+        return False, LOGIN_LOCKOUT_SECONDS - int(time.time() - first_ts)
+    if (time.time() - first_ts) >= LOGIN_LOCKOUT_SECONDS:
+        LOGIN_ATTEMPTS.pop(key, None)
+    return True, 0
+
+def record_failed_login():
+    key = login_lockout_key()
+    now = time.time()
+    count, first_ts = LOGIN_ATTEMPTS.get(key, (0, now))
+    LOGIN_ATTEMPTS[key] = (count + 1, first_ts)
+
+def record_successful_login():
+    LOGIN_ATTEMPTS.pop(login_lockout_key(), None)
+
+# S4: hardened cookie defaults
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
+
+@app.after_request
+def security_headers(resp):
+    # S9: security headers on every response
+    resp.headers['X-Frame-Options'] = 'DENY'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['Content-Security-Policy'] = (
+        "default-src 'self'; img-src 'self' data: https:; "
+        "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; "
+        "connect-src 'self' https://api.open-meteo.com"
+    )
+    return resp
 
 # --- CONFIGURE OAUTH DYNAMICALLY ---
 app.config['GOOGLE_CLIENT_ID'] = os.getenv('GOOGLE_CLIENT_ID')
@@ -110,6 +167,23 @@ def gen(camera):
  
 
 LOG_FILE = "ai_logs.txt"
+LOG_FILE_MAX_BYTES = 5 * 1024 * 1024  # S11: rotate ai_logs.txt past 5 MB
+
+# S10: whitelist of allowed crop growth stages (matches CROP_CYCLES vocabulary)
+ALLOWED_STAGES = {'Seedling', 'Vegetative', 'Flowering', 'Fruiting', 'Harvest Ready', 'Maturity', 'Dormant'}
+
+def safe_redirect_back(fallback_endpoint, **fallback_args):
+    """S11: never redirect to an attacker-chosen Referer host — only same-origin referrers."""
+    referrer = request.referrer
+    if referrer:
+        try:
+            from urllib.parse import urlparse
+            ref_host = urlparse(referrer).netloc
+            if ref_host == request.host:
+                return redirect(referrer)
+        except Exception:
+            pass
+    return redirect(url_for(fallback_endpoint, **fallback_args))
 
 def read_latest_logs_by_crop(limit_lines=5000):
     try:
@@ -272,6 +346,10 @@ def bulk_farm_delete():
     ids = data.get('ids', [])
     if not ids:
         return jsonify({"success": False}), 400
+    # S11: hard cap on bulk deletes per call
+    if len(ids) > 500:
+        return jsonify({"success": False, "message": "Too many ids (max 500 per call)"}), 400
+    ids = [i for i in ids if isinstance(i, int) and i > 0]
     
     db_conn = db.get_connection()
     placeholders = ','.join(['?'] * len(ids))
@@ -433,7 +511,7 @@ def verify_mfa_setup():
         conn.commit()
         conn.close()
         session.pop('temp_mfa_secret', None)
-        return jsonify({"success": True, "message": "MFA Enabled Successfully!"})
+    return jsonify({"success": True, "message": "MFA Enabled Successfully!"})
     
     return jsonify({"success": False, "message": "Invalid Code"})
 
@@ -441,10 +519,14 @@ def verify_mfa_setup():
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST' and request.is_json:
+        allowed, wait = login_allowed()
+        if not allowed:
+            return jsonify({"success": False, "message": f"Too many attempts. Try again in {wait}s."}), 429
         data = request.get_json()
         user = User.get_by_username(data.get('username'))
         
         if not user or not check_password_hash(user.password, data.get('password')):
+            record_failed_login()
             return jsonify({"success": False, "message": "Invalid credentials"})
             
         conn = db.get_connection()
@@ -455,13 +537,15 @@ def login():
             if not data.get('mfa_token'):
                 return jsonify({"success": False, "mfa_required": True})
             if not pyotp.TOTP(row['mfa_secret']).verify(data.get('mfa_token')):
+                record_failed_login()
                 return jsonify({"success": False, "message": "Invalid MFA Code"})
         
+        record_successful_login()
         session['user_id'] = user.id
         session['role'] = user.role
-        return jsonify({"success": True, "redirect": url_for('home')})
+    return jsonify({"success": True, "redirect": url_for('home')})
 
-    return render_template('login.html', users=User.get_all())
+    return render_template('login.html')
 
 @app.route('/logout')
 def logout():
@@ -469,6 +553,7 @@ def logout():
     return redirect(url_for('login'))
 
 @app.route('/api/switch_role', methods=['POST'])
+@login_required
 def switch_role():
     data = request.json
     target_username = data.get('username')
@@ -476,12 +561,25 @@ def switch_role():
 
     user = User.get_by_username(target_username)
     
-    if user and check_password_hash(user.password, password_attempt):
-        session['user_id'] = user.id
-        session['role'] = user.role
-        return jsonify({'success': True})
-    
-    return jsonify({'success': False, 'message': 'Invalid Password'})
+    if not user or not check_password_hash(user.password, password_attempt):
+        return jsonify({'success': False, 'message': 'Invalid Password'})
+
+    # S2: same MFA gate as the login path — a target user with MFA enabled
+    # must present a valid TOTP code before the session switches to them
+    conn = db.get_connection()
+    row = conn.execute("SELECT mfa_secret FROM users WHERE id = ?", (user.id,)).fetchone()
+    conn.close()
+
+    if row and row['mfa_secret']:
+        mfa_token = data.get('mfa_token')
+        if not mfa_token:
+            return jsonify({'success': False, 'mfa_required': True})
+        if not pyotp.TOTP(row['mfa_secret']).verify(mfa_token):
+            return jsonify({'success': False, 'message': 'Invalid MFA Code'})
+
+    session['user_id'] = user.id
+    session['role'] = user.role
+    return jsonify({'success': True})
 
 # --- MAIN ROUTES ---
 
@@ -567,7 +665,9 @@ def set_global_crop(farm_id):
 def set_unit_override(zone_id):
     crop_id = request.form.get('override_crop_id')
     FarmZone.set_zone_crop(zone_id, crop_id)
-    return redirect(request.referrer)
+    zone = FarmZone.get_by_id(zone_id)
+    farm_id = zone.farm_id if zone else 1
+    return safe_redirect_back('view_farm_overview', farm_id=farm_id)
 
 @app.route('/farm/<int:farm_id>/unit/<int:zone_id>')
 @login_required
@@ -646,8 +746,9 @@ def toggle_log_status(log_id):
     conn = db.get_connection()
     conn.execute("UPDATE pest_logs SET resolved = NOT resolved WHERE id = ?", (log_id,))
     conn.commit()
+    log_row = conn.execute("SELECT plantation_id FROM pest_logs WHERE id = ?", (log_id,)).fetchone()
     conn.close()
-    return redirect(request.referrer)
+    return safe_redirect_back('view_farm_overview', farm_id=log_row['plantation_id'] if log_row else 1)
 
 @app.route('/plantation/<int:plantation_id>/update', methods=['GET', 'POST'])
 @login_required
@@ -724,6 +825,9 @@ def restore_plantation(plantation_id):
 @login_required
 def permanent_delete_plantation(plantation_id):
     conn = db.get_connection()
+    # S8: hard delete cascades child rows so no orphans are left behind
+    conn.execute("DELETE FROM pest_logs WHERE plantation_id = ?", (plantation_id,))
+    conn.execute("DELETE FROM farm_zones WHERE farm_id = ?", (plantation_id,))
     conn.execute("DELETE FROM plantations WHERE id = ? AND is_deleted = 1", (plantation_id,))
     conn.commit()
     conn.close()
@@ -786,19 +890,22 @@ def manage_users():
         return redirect(url_for('home'))
 
     if request.method == 'POST':
-        default_pw = "123"
+        # S3: real credential flow — generate a one-time setup password and
+        # show it to the admin once; no fake "setup email sent" message.
+        import secrets
+        one_time_pw = secrets.token_urlsafe(10)
         bio = request.form.get('bio', '') 
         success = User.create(
             request.form['username'], 
             request.form['email'], 
-            default_pw,
+            one_time_pw,
             request.form['role'], 
             request.form['name'],
             bio,
             "#" + "".join([random.choice('0123456789ABCDEF') for j in range(6)])
         )
         if success:
-            flash(f"User created. Setup email sent to {request.form['email']}.", "success")
+            flash(f"User created. One-time setup password: {one_time_pw} — share it securely; user must change it on first login.", "success")
         else:
             flash("Username already exists.", "error")
     
@@ -834,7 +941,7 @@ def handle_crops():
             return jsonify({"error": "Crop name must be at least 6 characters long"}), 400
 
         Crop.create(crop_name, category, notes)
-        return jsonify({"message": "Crop created"}), 201
+    return jsonify({"message": "Crop created"}), 201
 
     # GET
     crops = Crop.get_all_with_stages()
@@ -988,6 +1095,7 @@ def delete_report(id):
     return redirect(url_for('retrieve_reports'))
 
 @app.route('/liveSearch')
+@login_required
 def live_search():
     query = request.args.get('q', '')
     reports = Report.get_all(search_query=query)
@@ -1006,7 +1114,7 @@ def handle_ai_profiles():
             variance=int(data['variance'])
         )
         profile.save()
-        return jsonify({"success": True})
+    return jsonify({"success": True})
     
     profiles = AIProfile.get_all()
     return jsonify([p.__dict__ for p in profiles])
@@ -1017,7 +1125,8 @@ def security_audit():
     if g.user.role != 'admin': return jsonify([])
     
     conn = db.get_connection()
-    users = conn.execute("SELECT username, password FROM users").fetchall()
+    # S6: never expose password hashes — audit listing carries identity fields only
+    users = conn.execute("SELECT username, email, role, name FROM users").fetchall()
     logs = conn.execute("SELECT issue, remarks FROM pest_logs").fetchall()
     conn.close()
     
@@ -1031,7 +1140,10 @@ def write_detailed_log(crop, status, confidence, x, y):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     log_line = f"[{timestamp}] TARGET:{crop} | STATUS:{status} | CONF:{confidence}% | COORD:({int(x)},{int(y)}) | LOG: Saved\n"
     try:
-        with open("ai_logs.txt", "a") as f:
+        # S11: rotate when the log exceeds the cap — keep a single .old copy
+        if os.path.exists(LOG_FILE) and os.path.getsize(LOG_FILE) > LOG_FILE_MAX_BYTES:
+            os.replace(LOG_FILE, LOG_FILE + ".old")
+        with open(LOG_FILE, "a") as f:
             f.write(log_line)
     except: pass
 
@@ -1052,7 +1164,7 @@ def save_snapshot():
         filename = f"snap_{int(time.time())}.jpg"
         path = os.path.join(folder, filename)
         cv2.imwrite(path, image)
-        return jsonify({"success": True, "file": filename})
+    return jsonify({"success": True, "file": filename})
     
     return jsonify({"success": False, "message": "Camera Error"})
 
@@ -1064,6 +1176,10 @@ def update_crop_stage(crop_id):
 
     if not stage_name:
         return jsonify({"success": False, "message": "Stage name required"}), 400
+
+    # S10: validate against the allowed growth-stage whitelist
+    if stage_name not in ALLOWED_STAGES:
+        return jsonify({"success": False, "message": f"Stage '{stage_name}' is not an allowed growth stage"}), 400
 
     Crop.add_stage(crop_id, stage_name)
     return jsonify({"success": True}), 200
@@ -1108,4 +1224,4 @@ def live_data():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5500)
+    app.run(debug=False, port=5500)

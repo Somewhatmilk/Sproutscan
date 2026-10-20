@@ -18,7 +18,7 @@
         <!-- 1. Quick Add User (Compact) -->
         <div class="card" style="background: white; padding: 20px; border-radius: 16px; height: fit-content;">
             <h4 style="color: var(--secondary); margin-bottom: 15px;">+ Invite User</h4>
-            <form method="POST">
+            <form method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input name="name" class="input-std" placeholder="Full Name" required style="padding: 10px;">
                 <input name="username" class="input-std" placeholder="Username" required style="padding: 10px;">
                 <input type="email" name="email" class="input-std" placeholder="Email" required style="padding: 10px;">
@@ -74,7 +74,7 @@
                             </button>
 
                             {% if u.id != g.user.id and u.username != 'admin' %}
-                            <form action="{{ url_for('delete_user', user_id=u.id) }}" method="POST" style="display: inline;">
+                            <form action="{{ url_for('delete_user', user_id=u.id) }}" method="POST" style="display: inline;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button class="btn-action btn-delete" onclick="return confirm('Delete this user?');" title="Remove Access">
                                     <i class="fas fa-trash"></i>
                                 </button>
