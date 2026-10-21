@@ -66,8 +66,8 @@
 
                 <!-- Inputs -->
                 <div id="loginFormContainer" style="margin-top: 20px;">
-                    <input type="hidden" id="usernameInput">
-                    <input type="password" id="passwordInput" class="input-std" placeholder="Password (Default: 123)">
+                    <input type="text" id="usernameInput" name="username" class="input-std" placeholder="Username" autocomplete="username">
+                    <input type="password" id="passwordInput" class="input-std" placeholder="Password">
                     <button onclick="attemptLogin()" class="btn btn-primary" style="width: 100%;">Login Access</button>
                     <div style="text-align: center; margin-top: 15px; font-size: 12px; cursor: pointer; color: #888;" onclick="document.getElementById('resetModal').style.display='flex'">Forgot Password?</div>
                 </div>
@@ -113,7 +113,7 @@
             const errorBox = document.getElementById('errorFlash');
 
             if(!username) {
-                errorBox.innerText = "Please select a user profile first.";
+                errorBox.innerText = "Please enter your username.";
                 errorBox.style.display = 'flex';
                 return;
             }
