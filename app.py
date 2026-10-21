@@ -511,8 +511,8 @@ def verify_mfa_setup():
         conn.commit()
         conn.close()
         session.pop('temp_mfa_secret', None)
-    return jsonify({"success": True, "message": "MFA Enabled Successfully!"})
-    
+        return jsonify({"success": True, "message": "MFA Enabled Successfully!"})
+
     return jsonify({"success": False, "message": "Invalid Code"})
 
 # --- LOGIN LOGIC ---
@@ -941,7 +941,7 @@ def handle_crops():
             return jsonify({"error": "Crop name must be at least 6 characters long"}), 400
 
         Crop.create(crop_name, category, notes)
-    return jsonify({"message": "Crop created"}), 201
+        return jsonify({"message": "Crop created"}), 201
 
     # GET
     crops = Crop.get_all_with_stages()
@@ -1164,8 +1164,8 @@ def save_snapshot():
         filename = f"snap_{int(time.time())}.jpg"
         path = os.path.join(folder, filename)
         cv2.imwrite(path, image)
-    return jsonify({"success": True, "file": filename})
-    
+        return jsonify({"success": True, "file": filename})
+
     return jsonify({"success": False, "message": "Camera Error"})
 
 @app.route("/api/crops/<int:crop_id>/stage", methods=["POST"])
