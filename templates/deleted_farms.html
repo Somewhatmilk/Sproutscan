@@ -201,7 +201,7 @@
                             </form>
                             <form method="POST" action="{{ url_for('permanent_delete_plantation', plantation_id=p.id) }}"
                                   onsubmit="return confirm('Permanently delete {{ p.name }}? This cannot be undone!');"
-                                  style="margin:0;">
+                                  style="margin:0;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn-perm-del">
                                     <i class="fas fa-times"></i> Delete Forever
                                 </button>
