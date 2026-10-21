@@ -204,6 +204,10 @@
             <p class="text-muted" style="margin-bottom: 15px;">Enter password to access this profile.</p>
             <input type="hidden" id="hiddenTargetUser">
             <input type="password" id="switchPassword" class="input-std" placeholder="Password">
+            <div id="switchMfaRow" style="display: none; margin-top: 10px;">
+                <p class="text-muted" style="margin-bottom: 8px;">This profile has MFA enabled — enter the code from your authenticator.</p>
+                <input type="text" id="switchMfaInput" class="input-std" placeholder="000 000" style="text-align: center; font-size: 20px; letter-spacing: 5px;">
+            </div>
             <div style="display: flex; gap: 10px;">
                 <button onclick="submitSwitch()" class="btn btn-primary" style="flex: 1;">Access</button>
                 <button onclick="document.getElementById('roleModal').style.display='none'" class="btn btn-secondary" style="flex: 1;">Cancel</button>
@@ -232,22 +236,30 @@
             document.getElementById('hiddenTargetUser').value = username;
             document.getElementById('targetName').innerText = name;
             document.getElementById('roleModal').style.display = 'flex';
-            document.getElementById('switchPassword').value = ''; 
+            document.getElementById('switchPassword').value = '';
+            document.getElementById('switchMfaRow').style.display = 'none';
+            document.getElementById('switchMfaInput').value = '';
             document.getElementById('switchPassword').focus();
         }
 
         async function submitSwitch() {
             const targetUser = document.getElementById('hiddenTargetUser').value;
             const pwd = document.getElementById('switchPassword').value;
+            const mfaInput = document.getElementById('switchMfaInput');
+            const body = {username: targetUser, password: pwd};
+            if (mfaInput.value.trim()) body.mfa_token = mfaInput.value.trim();
             try {
                 const res = await fetch('/api/switch_role', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({username: targetUser, password: pwd})
+                    body: JSON.stringify(body)
                 });
                 const data = await res.json();
                 if(data.success) location.reload();
-                else alert("Invalid Password");
+                else if(data.mfa_required) {
+                    document.getElementById('switchMfaRow').style.display = 'block';
+                    mfaInput.focus();
+                } else alert(data.message || "Invalid Password");
             } catch(e) { console.error(e); }
         }
 
