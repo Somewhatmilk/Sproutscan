@@ -23,8 +23,10 @@ def _client():
 
     tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     tmp.close()
-    test_db = app_module.Database(db_name=tmp.name)
-    test_db.init_db()  # schema-once: DDL no longer runs in __init__; force it here
+    # Routes use the module-level `db` singleton (app.py:108) — point it at the
+    # throwaway DB so tests never touch the real plantations.db.
+    app_module.db = app_module.Database(db_name=tmp.name)
+    app_module.db.init_db()  # schema-once: DDL no longer runs in __init__; force it here
     app_module.app.config["TESTING"] = True
     with app_module.app.test_client() as c:
         yield c
@@ -99,6 +101,9 @@ def test_verify_mfa_rejects_bad_token_and_keeps_db_unchanged():
 
         # and a valid code still succeeds (the re-indent must not break the happy path)
         resp = c.post("/api/verify-mfa", json={"token": valid_code}, headers=headers)
+        if not resp.get_json().get("success"):
+            # 30s TOTP window rolled over mid-test — retry with a fresh code
+            resp = c.post("/api/verify-mfa", json={"token": totp.now()}, headers=headers)
         assert resp.get_json()["success"] is True
 
 
