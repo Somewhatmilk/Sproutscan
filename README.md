@@ -6,6 +6,21 @@ SproutScan tracks zones, crop progress, incidents, costs, yields, profits, and q
 
 **Author:** Jonathan Choe ([Somewhatmilk](https://github.com/Somewhatmilk)). The first codebase was a school team project during the 2025/26 web-development semester; this repository is my refined and secured continuation of that work — security cleanup, testable UI logic, automated tests, and documentation.
 
+**Why I built this.** Crop records live on paper and in spreadsheets that never reach the people who need them. I wanted a farm dashboard an elderly grower can actually use: pick a zone, see what was planted, what it cost, what it is producing — and trust that the data behind it is protected, because the camera feeds and records deserve better than default security.
+
+## Security architecture
+
+SproutScan was hardened against the OWASP Top 10 as part of its redesign:
+
+- **CSRF protection repo-wide** (Flask-WTF `CSRFProtect`, token in every form across all 21 templates)
+- **TOTP-based multi-factor authentication** — MFA enforced on role-switching and sensitive mutations, with a challenge UI
+- **Fernet symmetric encryption** for stored secrets
+- **Login rate-limiting and lockout** (11th attempt → 429) plus security headers (CSP, X-Frame-Options, X-Content-Type-Options)
+- **Parameterized SQL everywhere** — no string-interpolated queries (verified across the codebase)
+- **Fail-loud secrets** — `SECRET_KEY` must be set at startup; a verbatim copy of `.env.example` refuses to run
+- **Soft-delete + FK enforcement** (`PRAGMA foreign_keys=ON`), schema-once initialization
+- **Verification suites**: pytest (CSRF-bearing, DB-writing tests run against a throwaway DB) + Node test runner — both green
+
 ## Showcase
 
 These images come from the app's own media folder and show the farm dashboard's camera-zone views.
